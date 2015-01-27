@@ -49,11 +49,26 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Documents\DocumentInfo.cs" />
+    <Compile Include="Documents\IDocumentSource.cs" />
+    <Compile Include="Indexing\IIndex.cs" />
+    <Compile Include="Indexing\Indexer.cs" />
+    <Compile Include="Indexing\IndexerCreationOptions.cs" />
+    <Compile Include="Indexing\Indexes\ImmutableIndex.cs" />
+    <Compile Include="Indexing\Indexes\LockingIndex.cs" />
+    <Compile Include="Indexing\Internal\InternalSortedList.cs" />
+    <Compile Include="Indexing\Internal\LockingStrategy.cs" />
+    <Compile Include="Indexing\Internal\StringComparisonComparer.cs" />
+    <Compile Include="Parsers\ILineParser.cs" />
+    <Compile Include="Parsers\IStreamParser.cs" />
+    <Compile Include="Parsers\RegexLineParser.cs" />
+    <Compile Include="Parsers\StreamLineParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
