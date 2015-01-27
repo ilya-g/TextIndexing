@@ -54,7 +54,7 @@ namespace Primitive.Text.Indexing
         {
             var wordIndex = this.wordIndex;
             var result = new List<string>(wordIndex.Count);
-            result.AddRange(wordIndex.Select(item => item.Key));
+            result.AddRange(wordIndex.Keys);
             return result;
         }
 

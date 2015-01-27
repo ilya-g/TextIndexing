@@ -7,62 +7,37 @@ namespace Primitive.Text.Indexing.Internal
 {
     internal class InternalSortedList<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     {
-        private readonly List<KeyValuePair<TKey, TValue>> internalStorage;
+        private readonly List<TKey> keys;
+        private readonly List<TValue> values; 
 
         public InternalSortedList(IComparer<TKey> keyComparer, int capacity = 0)
         {
-            kvpKeyComparer = new KVPairKeyComparer() {keyComparer = keyComparer};
-            internalStorage = new List<KeyValuePair<TKey, TValue>>(capacity);
+            KeyComparer = keyComparer;
+            keys = new List<TKey>(capacity);
+            values = new List<TValue>(capacity);
         }
 
         public InternalSortedList(InternalSortedList<TKey, TValue> source)
         {
-            kvpKeyComparer = new KVPairKeyComparer() { keyComparer = source.KeyComparer };
-            this.internalStorage = new List<KeyValuePair<TKey, TValue>>(source.internalStorage);
+            this.KeyComparer = source.KeyComparer;
+            this.keys = new List<TKey>(source.keys);
+            this.values = new List<TValue>(source.values);
         }
 
-        public IComparer<TKey> KeyComparer { get { return kvpKeyComparer.keyComparer; } }
+        public IComparer<TKey> KeyComparer { get; private set; }
 
-        private readonly KVPairKeyComparer kvpKeyComparer;
 
-        private class KVPairKeyComparer: IComparer<KeyValuePair<TKey, TValue>>
+        public int IndexOfKey(TKey key)
         {
-            public IComparer<TKey> keyComparer;
-            public int Compare(KeyValuePair<TKey, TValue> x, KeyValuePair<TKey, TValue> y)
-            {
-                return keyComparer.Compare(x.Key, y.Key);
-            }
+            return keys.BinarySearch(key, KeyComparer);
         }
 
-        public int BinarySearch(TKey key)
-        {
-            //return internalStorage.BinarySearch(new KeyValuePair<TKey, TValue>(key, default(TValue)), kvpKeyComparer);
-            var comparer = KeyComparer;
-            int lower = 0, upper = internalStorage.Count - 1;
-
-            while (lower <= upper)
-            {
-                int middle = lower + (upper - lower) / 2;
-                int comparisonResult = comparer.Compare(key, internalStorage[middle].Key);
-
-                if (comparisonResult == 0)
-                    return middle;
-
-                if (comparisonResult < 0)
-                    upper = middle - 1;
-                else 
-                    lower = middle + 1;
-            }
-
-            return ~lower;
-        }
-
-        public int Count { get { return internalStorage.Count; } }
+        public int Count { get { return keys.Count; } }
 
 
         public bool TryGetValue(TKey key, out TValue value)
         {
-            var index = BinarySearch(key);
+            var index = IndexOfKey(key);
             if (index < 0)
             {
                 value = default(TValue);
@@ -70,47 +45,50 @@ namespace Primitive.Text.Indexing.Internal
             }
             else
             {
-                value = internalStorage[index].Value;
+                value = values[index];
                 return true;
             }
         }
 
         public KeyValuePair<TKey, TValue> this[int index]
         {
-            get { return internalStorage[index]; }
+            get { return new KeyValuePair<TKey, TValue>(keys[index], values[index]); }
         }
 
 
         public void SetValueAt(int index, TValue value)
         {
-            internalStorage[index] = new KeyValuePair<TKey, TValue>(internalStorage[index].Key, value);
+            values[index] = value;
         }
 
         public void Add(TKey key, TValue value)
         {
-            var index = BinarySearch(key);
+            var index = IndexOfKey(key);
             if (index >= 0)
                 throw new ArgumentException(string.Format("Key '{0}' is already added", key), "key");
             index = ~index;
-            internalStorage.Insert(index, new KeyValuePair<TKey, TValue>(key, value));
-
+            keys.Insert(index, key);
+            values.Insert(index, value);
         }
         public void AddSorted(TKey key, TValue value)
         {
 #if DEBUG
-            if (internalStorage.Count > 0)
+            if (keys.Count > 0)
             {
-                var lastKey = internalStorage.Last().Key;
+                var lastKey = keys.Last();
                 if (KeyComparer.Compare(key, lastKey) <= 0)
                     throw new ArgumentException("New key value must be stricty greater than the greatest key in the list", "key");
             }
 #endif
-            internalStorage.Add(new KeyValuePair<TKey, TValue>(key, value));
+            keys.Add(key);
+            values.Add(value);
         }
 
-        public List<KeyValuePair<TKey, TValue>>.Enumerator GetEnumerator()
+        public IEnumerable<TKey> Keys {get { return keys; }} 
+
+        public Enumerator GetEnumerator()
         {
-            return internalStorage.GetEnumerator();
+            return new Enumerator(keys, values);
         }
 
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
@@ -121,6 +99,44 @@ namespace Primitive.Text.Indexing.Internal
         IEnumerator IEnumerable.GetEnumerator()
         {
             return this.GetEnumerator();
+        }
+
+        public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
+        {
+            private List<TKey>.Enumerator keyEnumerator;
+            private List<TValue>.Enumerator valueEnumerator;
+
+            internal Enumerator(List<TKey> keys, List<TValue> values) 
+            {
+                this.keyEnumerator = keys.GetEnumerator();
+                this.valueEnumerator = values.GetEnumerator();
+            }
+
+            public void Dispose()
+            {
+                keyEnumerator.Dispose();
+                valueEnumerator.Dispose();
+            }
+
+            public bool MoveNext()
+            {
+                return keyEnumerator.MoveNext() & valueEnumerator.MoveNext();
+            }
+
+            public void Reset()
+            {
+                throw new NotSupportedException();
+            }
+
+            public KeyValuePair<TKey, TValue> Current
+            {
+                get
+                {
+                    return new KeyValuePair<TKey, TValue>(keyEnumerator.Current, valueEnumerator.Current);
+                }
+            }
+
+            object IEnumerator.Current { get { return Current; } }
         }
     }
 }
