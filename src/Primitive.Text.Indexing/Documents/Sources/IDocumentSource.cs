@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace Primitive.Text.Documents
+namespace Primitive.Text.Documents.Sources
 {
     public interface IDocumentSource
     {

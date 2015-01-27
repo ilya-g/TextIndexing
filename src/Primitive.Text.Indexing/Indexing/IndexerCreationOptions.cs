@@ -31,7 +31,7 @@ namespace Primitive.Text.Indexing
                 case IndexLocking.ReadWrite:
                     return new LockingIndex(WordComparison, new LockingStrategy.ReadWrite());
                 default:
-                    throw new ArgumentOutOfRangeException(string.Format("Index locking value '{0}' is out of range", IndexLocking), "IndexLocking");
+                    throw new ArgumentOutOfRangeException(string.Format("IndexLocking option value '{0}' is out of range", IndexLocking), "IndexLocking");
             }
         }
 

@@ -49,8 +49,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Documents\Sources\AbstractDocumentSource.cs" />
+    <Compile Include="Documents\Sources\DirectoryDocumentSource.cs" />
     <Compile Include="Documents\DocumentInfo.cs" />
-    <Compile Include="Documents\IDocumentSource.cs" />
+    <Compile Include="Documents\Sources\FileSystemDocumentSource.cs" />
+    <Compile Include="Documents\Sources\IDocumentSource.cs" />
+    <Compile Include="Documents\IndexedDocument.cs" />
+    <Compile Include="Documents\Sources\DocumentSourceIndexer.cs" />
+    <Compile Include="Documents\Sources\SingleFileDocumentSource.cs" />
     <Compile Include="Indexing\IIndex.cs" />
     <Compile Include="Indexing\Indexer.cs" />
     <Compile Include="Indexing\IndexerCreationOptions.cs" />

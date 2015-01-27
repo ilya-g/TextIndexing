@@ -1,5 +1,6 @@
 using System;
 using JetBrains.Annotations;
+using Primitive.Text.Documents.Sources;
 
 namespace Primitive.Text.Documents
 {

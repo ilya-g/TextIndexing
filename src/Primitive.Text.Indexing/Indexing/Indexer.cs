@@ -2,11 +2,15 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Text;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
+using Primitive.Text.Documents.Sources;
 using Primitive.Text.Indexing.Internal;
 using Primitive.Text.Parsers;
 
@@ -21,8 +25,10 @@ namespace Primitive.Text.Indexing
         public IStreamParser StreamParser { get; private set; }
 
         [NotNull]
-        public IReadOnlyList<IDocumentSource> DocumentSources { get; private set; }
+        public IReadOnlyList<DocumentSourceIndexer> DocumentSources { get { return documentSources; } }
 
+
+        private volatile IImmutableList<DocumentSourceIndexer> documentSources;
 
         private readonly IComparer<string> wordComparer;
 
@@ -35,8 +41,8 @@ namespace Primitive.Text.Indexing
             Index = index;
             StreamParser = streamParser;
 
-            this.wordComparer = new StringComparisonComparer(index.WordComparison);
-            DocumentSources = ImmutableList<IDocumentSource>.Empty;
+            wordComparer = new StringComparisonComparer(index.WordComparison);
+            documentSources = ImmutableList<DocumentSourceIndexer>.Empty;
         }
 
         /// <summary>
@@ -60,34 +66,57 @@ namespace Primitive.Text.Indexing
                 throw new ArgumentException("StreamLexer and LineLexer cannot be specified simulaneosly", "options");
 
             var index = options.CreateIndex();
-            var lexer = options.StreamParser ?? new StreamLineParser(options.LineParser ?? RegexLineParser.Default);
-            return new Indexer(index, lexer);
+            var parser = options.StreamParser ?? new StreamLineParser(options.LineParser ?? RegexLineParser.Default);
+            return new Indexer(index, parser);
         }
 
 
-        public void AddDocumentSource([NotNull] IDocumentSource source) // return type: RegisteredDocumentSource?
+        public DocumentSourceIndexer AddDocumentSource([NotNull] IDocumentSource source)
         {
-            if (source == null) throw new ArgumentNullException("source");
+            if (source == null)
+                throw new ArgumentNullException("source");
 
-            source.FindAllDocuments()
-                .Merge(source.ChangedDocuments())
-                .ObserveOn(Scheduler.Default)
-                .Subscribe(OnDocumentFound);
+            var indexedSource = new DocumentSourceIndexer(
+                source, 
+                GetDocumentIndexWords,
+                Observer.Create<IndexedDocument>(MergeIndexedDocument));
+
+            lock (this)
+                documentSources = documentSources.Add(indexedSource);
+
+            return indexedSource;
         }
 
-        private void OnDocumentFound(DocumentInfo documentInfo)
+        public void RemoveDocumentSource([NotNull] DocumentSourceIndexer documentSourceIndexer)
         {
-                Observable.Using(
-                    () => documentInfo.Source.OpenDocument(documentInfo),
-                    reader => 
-                        StreamParser.ExtractWords(reader).Aggregate(
-                            new SortedSet<string>(wordComparer), 
-                            (set, word) =>
-                            {
-                                set.Add(word);
-                                return set;
-                            }))
-                .Subscribe(indexWords => Index.Merge(documentInfo, indexWords));
+            if (documentSourceIndexer == null)
+                throw new ArgumentNullException("documentSourceIndexer");
+
+            lock (this)
+                documentSources = documentSources.Remove(documentSourceIndexer);
+
+            documentSourceIndexer.Dispose();
+        }
+
+
+        private Task<ISet<string>> GetDocumentIndexWords(DocumentInfo documentInfo)
+        {
+            return Observable.Using(
+                () => documentInfo.Source.OpenDocument(documentInfo),
+                reader =>
+                    StreamParser.ExtractWords(reader).Aggregate(
+                        new SortedSet<string>(wordComparer) as ISet<string>,
+                        (set, word) =>
+                        {
+                            set.Add(word);
+                            return set;
+                        }))
+                .ToTask();
+        }
+
+        private void MergeIndexedDocument(IndexedDocument indexedDocument)
+        {
+            Index.Merge(indexedDocument.Document, indexedDocument.IndexWords);
         }
 
     }
