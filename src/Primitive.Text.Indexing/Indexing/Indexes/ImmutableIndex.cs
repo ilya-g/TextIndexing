@@ -54,7 +54,7 @@ namespace Primitive.Text.Indexing
         {
             var wordIndex = this.wordIndex;
             var result = new List<string>(wordIndex.Count);
-            result.AddRange(wordIndex.Select(item => item.Key));
+            result.AddRange(wordIndex.Keys);
             return result;
         }
 
@@ -77,8 +77,6 @@ namespace Primitive.Text.Indexing
         public void Merge(DocumentInfo documentInfo, IEnumerable<string> indexWords)
         {
             var sourceWords = new SortedSet<string>(indexWords, wordComparer).ToList();
-            if (!sourceWords.Any())
-                return;
             var singleDocumentList = ImmutableHashSet.Create(documentInfo);
 
             // Merge join sorted word list with wordIndex list

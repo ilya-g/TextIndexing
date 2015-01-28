@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace Primitive.Text.Documents
+namespace Primitive.Text.Documents.Sources
 {
     public class TestDocumentSource : IDocumentSource
     {

@@ -39,7 +39,7 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Documents\TestDocumentSource.cs" />
+    <Compile Include="Documents\Sources\TestDocumentSource.cs" />
     <Compile Include="Indexing\IndexTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

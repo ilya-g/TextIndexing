@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -6,78 +7,180 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Primitive.Text.Documents;
+using Primitive.Text.Documents.Sources;
 
 namespace Primitive.Text.Indexing
 {
-    [TestFixture]
+    [TestFixture(IndexLocking.NoLocking)]
+    [TestFixture(IndexLocking.Exclusive)]
+    [TestFixture(IndexLocking.ReadWrite)]
     public class IndexTests
     {
-        [Test]
-        public void ParallelPopulateIndexAndQueryDocuments(
-            [Values(IndexLocking.NoLocking, IndexLocking.Exclusive, IndexLocking.ReadWrite)] IndexLocking indexLocking
-        )
-        {
-            var rndDoc = new Random();
-            int maxDocuments = 1000;
-            int maxWords = 1000;
-            var documents = Enumerable.Range(1, maxDocuments * 10)
-                .Select(n =>
-                {
-                    int docNumber = rndDoc.Next(1, maxDocuments);
-                    return new
-                    {
-                        document = new DocumentInfo(docNumber.ToString(), TestDocumentSource.Instance),
-                        words = Enumerable.Range(n, 500)
-                            .Select(_ => string.Format("word{0:000}", rndDoc.Next(1, maxWords / 2) * 2 + docNumber % 2)),
-                    };
-                }).ToList();
+        private readonly IndexerCreationOptions indexCreationOptions;
 
-            var indexCreationOptions = new IndexerCreationOptions()
+        public IndexTests(IndexLocking indexLocking)
+        {
+            indexCreationOptions = new IndexerCreationOptions()
             {
                 IndexLocking = indexLocking
             };
+        }
+
+        [Test]
+        public void MergeDocument_GetItBack()
+        {
+            IIndex index = indexCreationOptions.CreateIndex();
+            var document = new DocumentInfo("id1", TestDocumentSource.Instance);
+            var words = new[] {"cat", "category"};
+
+            index.Merge(document, words);
+
+            foreach (var word in words)
+            {
+                Assert.That(index.QueryDocuments(word).Single(), Is.EqualTo(document));
+            }
+
+            var catDocuments = index.QueryDocumentsStartsWith("cat");
+            Assert.That(catDocuments, Has.Count.EqualTo(words.Count()));
+            foreach (var item in catDocuments)
+            {
+                Assert.That(item.Value.Single(), Is.EqualTo(document));
+            }
+
+            index.Merge(document, Enumerable.Empty<string>());
+            foreach (var word in words)
+            {
+                Assert.That(index.QueryDocuments(word), Is.Empty);
+            }
+        }
+
+        [Test]
+        public void Snapshot_UnchangedAfterMerge()
+        {
+            IIndex index = indexCreationOptions.CreateIndex();
+            var document = new DocumentInfo("id1", TestDocumentSource.Instance);
+            var words = new[] { "cat", "category" };
+            index.Merge(document, words);
+
+            var snapshot = index.Snapshot();
+
+            var document2 = new DocumentInfo("id2", TestDocumentSource.Instance);
+            var words2 = new[] {"bar"};
+            index.Merge(document2, words2);
+
+            Assert.That(snapshot.GetIndexedWords(), Is.EquivalentTo(words));
+            Assert.That(snapshot.QueryDocumentsMatching(_ => true).SelectMany(item => item.Value).Distinct().Single(), Is.EqualTo(document));
+        }
+
+        [Test]
+        public void SequentialPerformance()
+        {
+            var documents = GenerateDocuments(distinctDocumentsCount: 500, distinctWordsCount: 200);
+            var index = indexCreationOptions.CreateIndex();
+
+            PopulateIndex(index, documents);
+
+            MeasureUntil(TimeSpan.FromSeconds(1), "Snapshot", () => index.Snapshot());
+
+            var rng = new Random();
+            var words = index.GetIndexedWords();
+            MeasureUntil(TimeSpan.FromSeconds(1), "Query", () => index.QueryDocuments(words[rng.Next(words.Count)]));
+        }
+
+        [Test]
+        public void ParallelPopulateQuerySnapshotPerformance()
+        {
+            int maxDocuments = 1000;
+            int maxWords = 1000;
+            var documents = GenerateDocuments(maxDocuments, maxWords);
+
+            Action<string, IEnumerable<DocumentInfo>> validateInvariant = (indexWord, wordDocuments) =>
+            {
+                int wordNumber = int.Parse(indexWord.Substring(4));
+                Assert.That(wordDocuments.Count(), Is.LessThanOrEqualTo(maxDocuments));
+                Assert.That(wordDocuments.All(d => int.Parse(d.Id) % 2 == wordNumber % 2));
+            };
+
             IIndex index = indexCreationOptions.CreateIndex();
             Console.WriteLine("Created index {0}", index.GetType().Name);
 
             Parallel.Invoke(
                 () =>
                 {
-                    Thread.Sleep(5000);
+                    Thread.Sleep(3000);
                     var rnd = new Random();
                     int totalDocuments = 0;
-                    var queryCount = 100000;
-                    var sw = Stopwatch.StartNew();
 
-                    Parallel.For(0, queryCount, new ParallelOptions() { MaxDegreeOfParallelism = 2 },
-                        _ => Interlocked.Add(ref totalDocuments, index.QueryDocuments(string.Format("word{0:000}", rnd.Next(2, maxWords))).Count()));
-                    Console.WriteLine("Made {0} queries, queried {1} documents total, elapsed {2} ms total", queryCount, totalDocuments, sw.ElapsedMilliseconds);
+                    MeasureUntil(TimeSpan.FromSeconds(4), "Query", () =>
+                    {
+                        var wordId = rnd.Next(2, maxWords);
+                        string word = string.Format("word{0:000}", wordId);
+                        var wordDocuments = index.QueryDocuments(word);
+                        Interlocked.Add(ref totalDocuments, wordDocuments.Count());
+                        if (wordId < maxWords / 100)
+                            validateInvariant(word, wordDocuments);
+                    }, maxIterations: 100000);
+                    Console.WriteLine("Queried {0} documents total", totalDocuments);
                 },
                 () =>
                 {
-                    Thread.Sleep(5000);
-                    var snapshots = 1000;
-                    var sw = Stopwatch.StartNew();
-                    Parallel.For(0, snapshots, new ParallelOptions() { MaxDegreeOfParallelism = 2 },
-                        _ => index.Snapshot());
-                    Console.WriteLine("Made {0} snapshots, elapsed {1} ms total", snapshots, sw.ElapsedMilliseconds);
+                    Thread.Sleep(3000);
+                    MeasureUntil(TimeSpan.FromSeconds(4), "Snapshot", () => index.Snapshot());
                 }, 
-                () =>
-                {
-                    var sw = Stopwatch.StartNew();
-                    Parallel.ForEach(documents, new ParallelOptions {MaxDegreeOfParallelism = 2},
-                        item => index.Merge(item.document, item.words));
-                    Console.WriteLine("Populated index, elapsed {0} ms", sw.ElapsedMilliseconds);
-                });
+                () => PopulateIndex(index, documents));
 
             var indexedWords = index.GetIndexedWords();
             Assert.That(indexedWords.Count, Is.LessThanOrEqualTo(maxWords));
-            foreach (var indexedWord in indexedWords)
+            foreach (var indexWord in indexedWords)
             {
-                int wordNumber = int.Parse(indexedWord.Substring(4));
-                var wordDocuments = index.QueryDocuments(indexedWord);
-                Assert.That(wordDocuments.Count(), Is.LessThanOrEqualTo(maxDocuments));
-                Assert.That(wordDocuments.All(d => int.Parse(d.Id) % 2 == wordNumber % 2));
+                validateInvariant(indexWord, index.QueryDocuments(indexWord));
             }
+        }
+
+        private static void MeasureUntil(TimeSpan maxExecutionTime, string operationName, Action actionToMeasure, int maxDegreeOfParallelism = 2, int maxIterations = int.MaxValue)
+        {
+            {
+                var sw = Stopwatch.StartNew();
+                var loopResult = Parallel.For(0, maxIterations, new ParallelOptions() {MaxDegreeOfParallelism = maxDegreeOfParallelism},
+                    (i, state) =>
+                    {
+                        actionToMeasure();
+                        if (i%100 == 0 && sw.Elapsed > maxExecutionTime)
+                            state.Break();
+                    });
+                sw.Stop();
+                var executedIterations = loopResult.LowestBreakIteration ?? maxIterations;
+                Console.WriteLine("{0}: {1} operations, elapsed {2} ms total, {3:0.000} ms per operation",
+                    operationName, 
+                    executedIterations,
+                    sw.ElapsedMilliseconds, 
+                    sw.Elapsed.TotalMilliseconds/executedIterations);
+            }
+        }
+
+
+        private static List<IndexedDocument> GenerateDocuments(int distinctDocumentsCount, int distinctWordsCount, int wordsPerDocument = 500)
+        {
+            var rndDoc = new Random();
+            return Enumerable.Range(1, distinctDocumentsCount * 10)
+                .Select(n =>
+                {
+                    int docNumber = rndDoc.Next(1, distinctDocumentsCount);
+                    return new IndexedDocument(
+                        document: new DocumentInfo(docNumber.ToString(), TestDocumentSource.Instance),
+                        indexWords: new HashSet<string>(Enumerable.Range(n, wordsPerDocument)
+                            .Select(_ => string.Format("word{0:000}", rndDoc.Next(1, distinctWordsCount / 2) * 2 + docNumber % 2)))
+                        );
+                }).ToList();
+        }
+
+        private static void PopulateIndex(IIndex index, ICollection<IndexedDocument> documents)
+        {
+            var sw = Stopwatch.StartNew();
+            Parallel.ForEach(documents, new ParallelOptions {MaxDegreeOfParallelism = 2},
+                item => index.Merge(item.Document, item.IndexWords));
+            sw.Stop();
+            Console.WriteLine("Populated index, elapsed {0} ms, total {1} documents processed, total {2} words indexed", sw.ElapsedMilliseconds, documents.Count, index.GetIndexedWords().Count);
         }
     }
 }

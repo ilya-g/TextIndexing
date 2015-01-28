@@ -80,8 +80,6 @@ namespace Primitive.Text.Indexing
         public void Merge(DocumentInfo documentInfo, IEnumerable<string> indexWords)
         {
             var sourceWords = new SortedSet<string>(indexWords, wordComparer).ToList();
-            if (!sourceWords.Any())
-                return;
 
             // Merge join sorted word list with wordIndex list
             using (locking.InWriteLock())
