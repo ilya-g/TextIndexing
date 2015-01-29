@@ -16,6 +16,6 @@ namespace Primitive.Text.Documents.Sources
         }
 
         public abstract IObservable<DocumentInfo> FindAllDocuments();
-        public abstract IObservable<DocumentInfo> ChangedDocuments();
+        public abstract IObservable<DocumentInfo> WatchForChangedDocuments();
     }
 }

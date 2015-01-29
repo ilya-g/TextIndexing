@@ -20,7 +20,7 @@ namespace Primitive.Text.Documents.Sources
             throw new NotImplementedException();
         }
 
-        public IObservable<DocumentInfo> ChangedDocuments()
+        public IObservable<DocumentInfo> WatchForChangedDocuments()
         {
             throw new NotImplementedException();
         }

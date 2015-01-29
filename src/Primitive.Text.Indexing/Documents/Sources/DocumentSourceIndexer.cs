@@ -13,6 +13,8 @@ namespace Primitive.Text.Documents.Sources
     {
         private readonly IDisposable subscription;
 
+        // TODO: Properties describing the state
+
         internal DocumentSourceIndexer([NotNull] IDocumentSource source, [NotNull] Func<DocumentInfo, Task<ISet<string>>> documentParser,
             [NotNull] IObserver<IndexedDocument> indexedDocumentsObserver)
         {
@@ -22,7 +24,7 @@ namespace Primitive.Text.Documents.Sources
             DocumentSource = source;
 
             subscription = source.FindAllDocuments()
-                .Merge(source.ChangedDocuments())
+                .Merge(source.WatchForChangedDocuments())
                 .ObserveOn(Scheduler.Default)
                 .SelectMany(documentParser, (document, indexWords) => new IndexedDocument(document, indexWords))
                 .Subscribe(indexedDocumentsObserver);

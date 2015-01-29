@@ -2,6 +2,7 @@
 using System.IO;
 using System.Reactive.Linq;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace Primitive.Text.Documents.Sources
 {
@@ -14,6 +15,7 @@ namespace Primitive.Text.Documents.Sources
 
         public Encoding DefaultEncoding { get; set; }
 
+        [CanBeNull]
         public override StreamReader OpenDocument(DocumentInfo document)
         {
             EnsureOwnDocument(document);
@@ -24,7 +26,7 @@ namespace Primitive.Text.Documents.Sources
             }
             catch (FileNotFoundException)
             {
-                return StreamReader.Null;
+                return null;
             }
         }
 
@@ -37,7 +39,11 @@ namespace Primitive.Text.Documents.Sources
         {
             return Observable.Create<FileSystemEventArgs>(obs =>
             {
-                var watcher = new FileSystemWatcher(path, filter);
+                var watcher = new FileSystemWatcher(path, filter)
+                {
+                    IncludeSubdirectories = true,
+                    EnableRaisingEvents = true,
+                };
                 FileSystemEventHandler watcherOnChanged = (s, e) => obs.OnNext(e);
                 watcher.Changed += watcherOnChanged;
                 watcher.Created += watcherOnChanged;

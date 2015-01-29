@@ -10,6 +10,8 @@ namespace Primitive.Text.Documents.Sources
         private readonly FileInfo fileInfo;
         private readonly DocumentInfo document;
 
+        public string FilePath { get { return fileInfo.FullName; } }
+
         public SingleFileDocumentSource([NotNull] string filePath)
         {
             if (filePath == null) throw new ArgumentNullException("filePath");
@@ -27,13 +29,15 @@ namespace Primitive.Text.Documents.Sources
 
         public override IObservable<DocumentInfo> FindAllDocuments()
         {
+            if (!fileInfo.Directory.Exists)
+                return Observable.Throw<DocumentInfo>(new DirectoryNotFoundException(string.Format("Directory '{0}' is invalid", fileInfo.Directory.FullName)));
             if (fileInfo.Exists)
                 return Observable.Return(document);
             else
                 return Observable.Empty<DocumentInfo>();
         }
 
-        public override IObservable<DocumentInfo> ChangedDocuments()
+        public override IObservable<DocumentInfo> WatchForChangedDocuments()
         {
             return CreateWatcher(fileInfo.DirectoryName, fileInfo.Name).Select(_ => document);
         }

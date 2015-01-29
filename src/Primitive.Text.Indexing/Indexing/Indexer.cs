@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -104,7 +105,7 @@ namespace Primitive.Text.Indexing
             return Observable.Using(
                 () => documentInfo.Source.OpenDocument(documentInfo),
                 reader =>
-                    StreamParser.ExtractWords(reader).Aggregate(
+                    StreamParser.ExtractWords(reader ?? StreamReader.Null).Aggregate(
                         new SortedSet<string>(wordComparer) as ISet<string>,
                         (set, word) =>
                         {
