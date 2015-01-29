@@ -35,7 +35,7 @@ namespace Primitive.Text.Indexing
 
         public IList<KeyValuePair<string, IEnumerable<DocumentInfo>>> QueryDocumentsStartsWith(string word)
         {
-            return QueryDocumentsMatching(key => key.StartsWith(word, StringComparison.CurrentCultureIgnoreCase));
+            return QueryDocumentsMatching(key => key.StartsWith(word, WordComparison));
         }
 
         public IList<KeyValuePair<string, IEnumerable<DocumentInfo>>> QueryDocumentsMatching(Func<string, bool> wordPredicate)

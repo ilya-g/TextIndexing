@@ -38,7 +38,19 @@ namespace Primitive.Text.Indexing
 
         public IList<KeyValuePair<string, IEnumerable<DocumentInfo>>> QueryDocumentsStartsWith(string word)
         {
-            return QueryDocumentsMatching(key => key.StartsWith(word, StringComparison.CurrentCultureIgnoreCase));
+            var wordIndex = this.wordIndex;
+            var startingIndex = wordIndex.IndexOfKey(word);
+            if (startingIndex < 0)
+                startingIndex = ~startingIndex;
+            return (
+                Enumerable.Range(startingIndex, wordIndex.Count - startingIndex)
+                    .Select(index =>
+                    {
+                        var item = wordIndex[index];
+                        return new KeyValuePair<string, IEnumerable<DocumentInfo>>(item.Key, item.Value);
+                    })
+                    .TakeWhile(item => item.Key.StartsWith(word, WordComparison))
+                ).ToList();
         }
 
         public IList<KeyValuePair<string, IEnumerable<DocumentInfo>>> QueryDocumentsMatching(Func<string, bool> wordPredicate)

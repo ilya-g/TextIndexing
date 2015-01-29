@@ -40,18 +40,41 @@ namespace Primitive.Text.Indexing
                 Assert.That(index.QueryDocuments(word).Single(), Is.EqualTo(document));
             }
 
-            var catDocuments = index.QueryDocumentsStartsWith("cat");
-            Assert.That(catDocuments, Has.Count.EqualTo(words.Count()));
-            foreach (var item in catDocuments)
+            foreach (var partialWord in new[]{"cat", "ca"})
             {
-                Assert.That(item.Value.Single(), Is.EqualTo(document));
+                var catDocuments = index.QueryDocumentsStartsWith(partialWord);
+                Assert.That(catDocuments, Has.Count.EqualTo(words.Count()));
+                foreach (var item in catDocuments)
+                {
+                    Assert.That(item.Value.Single(), Is.EqualTo(document));
+                }
             }
+            Assert.That(index.QueryDocumentsStartsWith("cate"), Has.Count.EqualTo(1));
 
             index.Merge(document, Enumerable.Empty<string>());
             foreach (var word in words)
             {
                 Assert.That(index.QueryDocuments(word), Is.Empty);
             }
+        }
+
+        [Test]
+        public void StartsWith_UsingInvariantComparison()
+        {
+            var indexCreationOptions = new IndexerCreationOptions()
+            {
+                IndexLocking = this.indexCreationOptions.IndexLocking,
+                WordComparison = StringComparison.InvariantCultureIgnoreCase
+            };
+            IIndex index = indexCreationOptions.CreateIndex();
+            var document = new DocumentInfo("id1", TestDocumentSource.Instance);
+            var words = new[] { "Schrœdinger", "Schroedinger", "Schroeder" };
+
+            index.Merge(document, words);
+            Assert.That(index.GetIndexedWords(), Has.Count.EqualTo(2));
+
+            Assert.That(index.QueryDocumentsStartsWith("schroe"), Has.Count.EqualTo(2));
+            Assert.That(index.QueryDocumentsStartsWith("schrœ"), Has.Count.EqualTo(2));
         }
 
         [Test]
@@ -71,6 +94,8 @@ namespace Primitive.Text.Indexing
             Assert.That(snapshot.GetIndexedWords(), Is.EquivalentTo(words));
             Assert.That(snapshot.QueryDocumentsMatching(_ => true).SelectMany(item => item.Value).Distinct().Single(), Is.EqualTo(document));
         }
+
+
 
         [Test]
         public void SequentialPerformance()

@@ -37,11 +37,7 @@ namespace Primitive.Text.Documents.Sources
         {
             return Observable.Create<FileSystemEventArgs>(obs =>
             {
-                var watcher = new FileSystemWatcher(path, filter)
-                {
-                    IncludeSubdirectories = true,
-                    EnableRaisingEvents = true,
-                };
+                var watcher = new FileSystemWatcher(path, filter);
                 FileSystemEventHandler watcherOnChanged = (s, e) => obs.OnNext(e);
                 watcher.Changed += watcherOnChanged;
                 watcher.Created += watcherOnChanged;

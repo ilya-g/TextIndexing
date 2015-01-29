@@ -27,6 +27,10 @@ namespace Primitive.Text.Indexing.Internal
         public IComparer<TKey> KeyComparer { get; private set; }
 
 
+        /// <returns>
+        /// The zero-based index of <paramref name="key"/> within the entire <see cref="T:System.Collections.Generic.SortedList`2"/>, if found;
+        /// otherwise, 2-complement of index of first key that is greater than specified <paramref name="key"/>
+        /// </returns>
         public int IndexOfKey(TKey key)
         {
             return keys.BinarySearch(key, KeyComparer);
