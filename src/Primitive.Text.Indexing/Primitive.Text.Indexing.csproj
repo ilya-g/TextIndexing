@@ -68,7 +68,7 @@
     <Compile Include="Parsers\ILineParser.cs" />
     <Compile Include="Parsers\IStreamParser.cs" />
     <Compile Include="Parsers\RegexLineParser.cs" />
-    <Compile Include="Parsers\StreamLineParser.cs" />
+    <Compile Include="Parsers\LineStreamParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

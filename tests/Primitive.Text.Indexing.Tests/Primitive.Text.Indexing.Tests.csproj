@@ -56,6 +56,7 @@
     <Compile Include="Documents\Sources\SingleFileDocumentSourceTests.cs" />
     <Compile Include="Documents\Sources\TestDocumentSource.cs" />
     <Compile Include="Indexing\IndexTests.cs" />
+    <Compile Include="Parsers\LineStreamParserTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

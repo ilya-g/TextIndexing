@@ -19,10 +19,17 @@ namespace Primitive.Text.Documents.Sources
         public override StreamReader OpenDocument(DocumentInfo document)
         {
             EnsureOwnDocument(document);
+            var path = document.Id;
+
+            if (!File.Exists(path))
+                return null;
 
             try
             {
-                return new StreamReader(File.Open(document.Id, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete), DefaultEncoding);
+                var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 
+                    65536,
+                    FileOptions.SequentialScan | FileOptions.Asynchronous);
+                return new StreamReader(stream, DefaultEncoding);
             }
             catch (FileNotFoundException)
             {
