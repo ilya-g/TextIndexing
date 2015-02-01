@@ -67,7 +67,7 @@ namespace Primitive.Text.Indexing
                 throw new ArgumentException("StreamLexer and LineLexer cannot be specified simulaneosly", "options");
 
             var index = options.CreateIndex();
-            var parser = options.StreamParser ?? new StreamLineParser(options.LineParser ?? RegexLineParser.Default);
+            var parser = options.StreamParser ?? new LineStreamParser(options.LineParser ?? RegexLineParser.Default);
             return new Indexer(index, parser);
         }
 
@@ -96,7 +96,7 @@ namespace Primitive.Text.Indexing
             lock (this)
                 documentSources = documentSources.Remove(documentSourceIndexer);
 
-            documentSourceIndexer.Dispose();
+            documentSourceIndexer.StopIndexing();
         }
 
 
