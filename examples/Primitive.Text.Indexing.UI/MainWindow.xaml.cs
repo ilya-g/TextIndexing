@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Primitive.Text.Documents;
 
 namespace Primitive.Text.Indexing.UI
 {
@@ -20,9 +21,39 @@ namespace Primitive.Text.Indexing.UI
     /// </summary>
     public partial class MainWindow : Window
     {
-        public MainWindow()
+        public MainWindow(IndexerViewModel viewModel)
         {
             InitializeComponent();
+            this.DataContext = viewModel;
+        }
+
+
+        public IndexerViewModel ViewModel
+        {
+            get { return (IndexerViewModel) DataContext; }
+        }
+
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[]) e.Data.GetData(DataFormats.FileDrop);
+
+                ViewModel.AddDocumentSourcesFromPathList(files);
+            }
+        }
+
+
+        private void SearchCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            ViewModel.ExecuteQuery();
+        }
+
+        private void ResultsListBox_DoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var document = ((ListBox) sender).SelectedItem as DocumentInfo;
+            if (document != null)
+                ViewModel.ExploreToDocument(document);
         }
     }
 }
