@@ -26,22 +26,12 @@ namespace Primitive.Text.Documents.Sources
 
             this.filter = filter;
             this.rootInfo = new DirectoryInfo(rootPath);
-
-            try
-            {
-                // validate filter pattern
-                using (rootInfo.EnumerateFiles(filter).GetEnumerator()) { }
-            }
-            catch (DirectoryNotFoundException)
-            {
-                // it's ok if directory doesn't exists
-            }
         }
 
         public override IObservable<DocumentInfo> FindAllDocuments()
         {
             return Observable.Defer(() =>
-                rootInfo.EnumerateFiles(filter, SearchOption.AllDirectories)
+                SafeEnumerateAllFiles(rootInfo, filter)
                     .Select(fileInfo => new DocumentInfo(fileInfo.FullName, this))
                     .ToObservable())
                 .SubscribeOn(Scheduler.Default);
@@ -52,13 +42,53 @@ namespace Primitive.Text.Documents.Sources
             return CreateWatcher(rootInfo.FullName, filter)
                 .SelectMany(e =>
                     e is RenamedEventArgs
-                    ? ChangesFromRenameEventArgs((RenamedEventArgs) e).ToObservable() 
-                    : Observable.Return(DocumentFromPath(e.FullPath)));
+                        ? ChangesFromRenameEventArgs((RenamedEventArgs) e).ToObservable()
+                        : Observable.Return(DocumentFromPath(e.FullPath)));
         }
 
         private IEnumerable<DocumentInfo> ChangesFromRenameEventArgs(RenamedEventArgs e)
         {
             return new[] {DocumentFromPath(e.OldFullPath), DocumentFromPath(e.FullPath)};
-        } 
+        }
+
+        private static IEnumerable<FileInfo> SafeEnumerateAllFiles(DirectoryInfo directory, string filter)
+        {
+            return EnumerateIgnoreException(
+                () => Enumerable.Concat(
+                    directory.EnumerateFiles(filter), 
+                    directory.EnumerateDirectories().SelectMany(nested => SafeEnumerateAllFiles(nested, filter))), 
+                shouldIgnore: e => e is UnauthorizedAccessException);
+        }
+
+        private static IEnumerable<T> EnumerateIgnoreException<T>(Func<IEnumerable<T>> sourceProvider, Func<Exception, bool> shouldIgnore)
+        {
+            IEnumerator<T> enumerator;
+            try
+            {
+                enumerator = sourceProvider().GetEnumerator();
+            }
+            catch (Exception e)
+            {
+                if (!shouldIgnore(e)) throw; 
+                yield break;
+            }
+
+            while (true)
+            {
+                try
+                {
+                    if (!enumerator.MoveNext()) yield break;
+                }
+                catch (Exception e)
+                {
+                    if (!shouldIgnore(e)) throw;
+                    yield break;
+                }
+                yield return enumerator.Current;
+            }
+
+
+        }
     }
+
 }
