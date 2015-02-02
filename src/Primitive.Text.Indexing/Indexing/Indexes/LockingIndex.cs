@@ -127,5 +127,23 @@ namespace Primitive.Text.Indexing
                 }
             }
         }
+
+        public void RemoveDocumentsMatching(Func<DocumentInfo, bool> predicate)
+        {
+            using (locking.InWriteLock())
+            {
+                foreach (var item in wordIndex)
+                {
+                    List<DocumentInfo> valuesToRemove = null;
+                    foreach (var document in item.Value)
+                    {
+                        if (predicate(document))
+                            (valuesToRemove ?? (valuesToRemove = new List<DocumentInfo>())).Add(document);
+                    }
+                    if (valuesToRemove != null)
+                        item.Value.ExceptWith(valuesToRemove);
+                }
+            }
+        }
     }
 }

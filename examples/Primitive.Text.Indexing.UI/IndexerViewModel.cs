@@ -12,6 +12,7 @@ using System.Windows.Input;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Documents.Sources;
+using Primitive.Text.Indexing.UI.Commands;
 
 namespace Primitive.Text.Indexing.UI
 {
@@ -23,6 +24,9 @@ namespace Primitive.Text.Indexing.UI
         public IndexerViewModel()
         {
             DefaultFilterPattern = "*.txt";
+            RemoveDocumentSourceCommand = new DelegateCommand<DocumentSourceIndexer>(RemoveDocumentSource);
+            SearchCommand = new DelegateCommand(ExecuteQuery);
+
             Indexer = Indexer.Create(new IndexerCreationOptions() { IndexLocking = IndexLocking.Exclusive});
             Indexer.AddDocumentSource(new DirectoryDocumentSource(
                 MoveUpThroughHierarhy(new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory), 5).FullName, "*.cs"));
@@ -54,6 +58,11 @@ namespace Primitive.Text.Indexing.UI
                 OnPropertyChanged();
             }
         }
+
+        public ICommand RemoveDocumentSourceCommand { get; private set; }
+
+        public ICommand SearchCommand { get; private set; }
+
 
         public void ExecuteQuery()
         {
@@ -94,7 +103,8 @@ namespace Primitive.Text.Indexing.UI
 
         public void ExploreToDocument(DocumentInfo document)
         {
-            Process.Start("explorer.exe", string.Format("/select, \"{0}\"", document.Id));
+            if (document != null)
+                Process.Start("explorer.exe", string.Format("/select, \"{0}\"", document.Id));
         }
 
         private static DirectoryInfo MoveUpThroughHierarhy([NotNull] DirectoryInfo directory, int levels)
@@ -136,6 +146,17 @@ namespace Primitive.Text.Indexing.UI
             OnPropertyChanged("DocumentSources");
         }
 
+
+
+        private void RemoveDocumentSource(DocumentSourceIndexer documentSourceIndexer)
+        {
+            if (documentSourceIndexer != null)
+            {
+                Indexer.RemoveDocumentSource(documentSourceIndexer);
+                OnPropertyChanged("DocumentSources");
+                ExecuteQuery();
+            }
+        }
 
         #region INofityPropertyChanged
 

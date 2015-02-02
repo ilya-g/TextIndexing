@@ -90,7 +90,6 @@ namespace Primitive.Text.Indexing
         {
             var sourceWords = new SortedSet<string>(indexWords, wordComparer).ToList();
             var singleDocumentList = ImmutableHashSet.Create(documentInfo);
-
             // Merge join sorted word list with wordIndex list
             lock (lockIndex)
             {
@@ -136,6 +135,22 @@ namespace Primitive.Text.Indexing
                         idxSource += 1;
                         idxTarget += 1;
                     }
+                }
+                this.wordIndex = newIndex;
+            }
+        }
+
+        public void RemoveDocumentsMatching(Func<DocumentInfo, bool> predicate)
+        {
+            lock (lockIndex)
+            {
+                var oldIndex = this.wordIndex;
+                var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count);
+                foreach (var item in oldIndex)
+                {
+                    var newValue = item.Value.Except(item.Value.Where(predicate));
+                    if (newValue.Count > 0)
+                        newIndex.AddSorted(item.Key, newValue);
                 }
                 this.wordIndex = newIndex;
             }

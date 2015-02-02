@@ -38,5 +38,11 @@ namespace Primitive.Text.Indexing
         ///  Merge is an atomic operation: the queries and snapshot operations either will see index before the merge or after the merge
         /// </remarks>
         void Merge(DocumentInfo documentInfo, IEnumerable<string> indexWords);
+
+        /// <summary>
+        ///  Removes from the index all documents matching the specified <paramref name="predicate"/>
+        /// </summary>
+        /// <param name="predicate">Predicate that defines the conditions of the documents to remove.</param>
+        void RemoveDocumentsMatching(Func<DocumentInfo, bool> predicate);
     }
 }

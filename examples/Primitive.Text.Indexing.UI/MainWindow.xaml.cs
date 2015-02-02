@@ -44,16 +44,12 @@ namespace Primitive.Text.Indexing.UI
         }
 
 
-        private void SearchCommand_Executed(object sender, ExecutedRoutedEventArgs e)
-        {
-            ViewModel.ExecuteQuery();
-        }
 
         private void ResultsListBox_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            var document = ((ListBox) sender).SelectedItem as DocumentInfo;
-            if (document != null)
-                ViewModel.ExploreToDocument(document);
+            ViewModel.ExploreToDocument(((ListBox)sender).SelectedItem as DocumentInfo);
         }
+
+
     }
 }

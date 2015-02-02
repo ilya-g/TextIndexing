@@ -97,6 +97,8 @@ namespace Primitive.Text.Indexing
                 documentSources = documentSources.Remove(documentSourceIndexer);
 
             documentSourceIndexer.StopIndexing();
+            // remove all documents from this source from index
+            Index.RemoveDocumentsMatching(document => document.Source == documentSourceIndexer.DocumentSource);
         }
 
 

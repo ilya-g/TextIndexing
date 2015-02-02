@@ -59,6 +59,22 @@ namespace Primitive.Text.Indexing
         }
 
         [Test]
+        public void RemovingDocumentsMatching()
+        {
+            IIndex index = indexCreationOptions.CreateIndex();
+            PopulateIndex(index, GenerateDocuments(5, 5, 100));
+
+            Func<DocumentInfo, bool> documentPredicate = document => int.Parse(document.Id) % 2 == 0;
+
+            index.RemoveDocumentsMatching(documentPredicate);
+
+            foreach (var item in index.QueryDocumentsMatching(_ => true))
+            {
+                Assert.That(item.Value.Where(documentPredicate), Is.Empty);
+            }
+        }
+
+        [Test]
         public void StartsWith_UsingInvariantComparison()
         {
             var indexCreationOptions = new IndexerCreationOptions()
