@@ -116,10 +116,21 @@ namespace Primitive.Text.Indexing
                         {
                             set.Add(word);
                             return set;
-                        }));
+                        }))
+                // consider file doesn't contain any words if access is denied
+                .Catch((UnauthorizedAccessException e) => Observable.Return(new SortedSet<string>() as ISet<string>));
 
-            return documentReader.ToTask();
+            return RetryOn(documentReader, shouldRetry: e => e is IOException, retryTimes: 4, retryDelay: TimeSpan.FromSeconds(1))
+                .ToTask();
         }
+
+        private static IObservable<T> RetryOn<T>(IObservable<T> source, Func<Exception, bool> shouldRetry, int retryTimes, TimeSpan retryDelay)
+        {
+            return source.Catch(
+                (Exception e) => shouldRetry(e) && retryTimes > 0 
+                    ? RetryOn(source, shouldRetry, retryTimes - 1, retryDelay).DelaySubscription(retryDelay)
+                    : Observable.Throw<T>(e));
+        } 
 
         private void MergeIndexedDocument(IndexedDocument indexedDocument)
         {
