@@ -7,6 +7,7 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 
@@ -16,14 +17,38 @@ namespace Primitive.Text.Documents.Sources
     {
         private static readonly int maxConcurrentIndexing = 8;
 
-        private readonly IDisposable subscription;
+        private readonly Func<IDisposable> startIndexing;
+        private volatile IDisposable subscription;
         private volatile int documentsParsed;
         private volatile int documentsFound;
         private volatile int documentsChanged;
 
+        private volatile int runningParsers;
+        private volatile Exception error;
+
         public IDocumentSource DocumentSource { get; private set; }
 
-        public DocumentSourceIndexerState State { get; private set; }
+        public DocumentSourceIndexerState State
+        {
+            get
+            {
+                return 
+                    subscription == null ? DocumentSourceIndexerState.Stopped :
+                    error != null ? DocumentSourceIndexerState.Failed :
+                    runningParsers > 0 ? DocumentSourceIndexerState.Indexing :
+                        DocumentSourceIndexerState.Watching;
+            }
+        }
+
+        public Exception Error
+        {
+            get { return error; }
+            private set
+            {
+                error = value;
+                OnPropertyChanged();
+            }
+        }
 
         public int DocumentsFound
         {
@@ -56,32 +81,102 @@ namespace Primitive.Text.Documents.Sources
         }
 
         internal DocumentSourceIndexer([NotNull] IDocumentSource source, [NotNull] Func<DocumentInfo, Task<ISet<string>>> documentParser,
-            [NotNull] IObserver<IndexedDocument> indexedDocumentsObserver)
+            [NotNull] Action<IndexedDocument> indexedDocumentAction)
         {
             if (source == null) throw new ArgumentNullException("source");
             if (documentParser == null) throw new ArgumentNullException("documentParser");
-            if (indexedDocumentsObserver == null) throw new ArgumentNullException("indexedDocumentsObserver");
+            if (indexedDocumentAction == null) throw new ArgumentNullException("indexedDocumentAction");
 
             DocumentSource = source;
 
-            subscription = source.FindAllDocuments().Do(_ => DocumentsFound += 1)
-                .Merge(source.WatchForChangedDocuments().Do(_ => DocumentsChanged += 1))
-                .Select(document => Observable.FromAsync(() => documentParser(document)).Select(words => new IndexedDocument(document, words)))
+            this.startIndexing = () =>
+                Observable.Merge(
+                    source.FindAllDocuments()
+                        .Buffer(TimeSpan.FromSeconds(0.5), 50)
+                        .Where(changes => changes.Count > 0)
+                        .Do(files => DocumentsFound += files.Count), 
+                    source.WatchForChangedDocuments()
+                        .Buffer(TimeSpan.FromSeconds(0.5))
+                        .Where(changes => changes.Count > 0)
+                        .Select(changes => changes.Distinct().ToList())
+                        .Do(changes => DocumentsChanged += changes.Count))
+                .Select(files => files.ToObservable())
+                .Concat()
+                .Do(_ => OnParsingStarted())
+                .Select(document =>
+                    Observable.FromAsync(() => documentParser(document))
+                        .Select(words => new IndexedDocument(document, words))
+                    )
+                .Merge()
+                .Do(_ => OnParsingStarted())
+                .Select(d => Observable.FromAsync(() => Task.Run(() => indexedDocumentAction(d))))
                 .Merge(maxConcurrentIndexing)
                 .Do(_ => DocumentsParsed += 1)
-                .Subscribe(indexedDocumentsObserver);
+                .Throttle(TimeSpan.FromSeconds(1))
+                .Do(_ => OnParsingCompleted())
+                .Subscribe(_ => { },
+                    error => { this.Error = error; OnStateChanged(); });
+        }
+
+        public void StartIndexing()
+        {
+            lock (this)
+            {
+                if (subscription != null) return;
+                subscription = startIndexing();
+            }
+            OnStateChanged();
         }
 
         public void StopIndexing()
         {
-            // Stop producing indexed documents 
-            subscription.Dispose();
+            
+            // Stop producing indexed documents
+            lock (this)
+            {
+                if (subscription != null)
+                    subscription.Dispose();
+                subscription = null;
+                Error = null;
+            }
+            OnStateChanged();
         }
+
+
+
+#pragma warning disable 0420 // using ref volatile with Interlocked
+        private void OnParsingStarted()
+        {
+            if (Interlocked.Exchange(ref runningParsers, 1) != 1)
+                OnStateChanged();
+        }
+
+        private void OnParsingCompleted()
+        {
+            if (Interlocked.Exchange(ref runningParsers, 0) != 0)
+                OnStateChanged();
+        }
+#pragma warning restore 0420
+
+        //private static Func<Task<T>> WatchRunning<T>(Func<Task<T>> taskSource, Action onStarted, Action onCompleted)
+        //{
+        //    return () =>
+        //    {
+        //        onStarted();
+        //        return taskSource().ContinueWith(t =>
+        //        {
+        //            onCompleted();
+        //            return t.Result;
+        //        });
+        //    };
+        //} 
+
 
         void IDisposable.Dispose()
         {
             StopIndexing();
         }
+
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -91,10 +186,13 @@ namespace Primitive.Text.Documents.Sources
             var handler = PropertyChanged;
             if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
         }
+
+        private void OnStateChanged() { OnPropertyChanged("State");}
     }
 
     public enum DocumentSourceIndexerState
     {
+        Stopped,
         Indexing,
         Watching,
         Failed

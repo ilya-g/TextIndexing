@@ -27,10 +27,13 @@ namespace Primitive.Text.Indexing.UI
             RemoveDocumentSourceCommand = new DelegateCommand<DocumentSourceIndexer>(RemoveDocumentSource);
             SearchCommand = new DelegateCommand(ExecuteQuery);
 
-            Indexer = Indexer.Create(new IndexerCreationOptions() { IndexLocking = IndexLocking.Exclusive});
-            Indexer.AddDocumentSource(new DirectoryDocumentSource(
-                MoveUpThroughHierarhy(new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory), 5).FullName, "*.cs"));
+            var baseDirectory = MoveUpThroughHierarhy(new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory), 5).FullName;
+
+            Indexer = Indexer.Create(new IndexerCreationOptions() { IndexLocking = IndexLocking.NoLocking});
+            Indexer.AddDocumentSource(new DirectoryDocumentSource(baseDirectory, "*.cs"), autoStartIndexing: false);
+            Indexer.AddDocumentSource(new DirectoryDocumentSource(baseDirectory, "*.xml"), autoStartIndexing: false);
         }
+
 
         public Indexer Indexer { get; private set; }
 
@@ -120,7 +123,11 @@ namespace Primitive.Text.Indexing.UI
         }
 
 
-
+        public void StartIndexingAllSources()
+        {
+            foreach (var documentSourceIndexer in DocumentSources)
+                documentSourceIndexer.StartIndexing();
+        }
 
         public void AddDocumentSourcesFromPathList([NotNull] IEnumerable<string> files)
         {

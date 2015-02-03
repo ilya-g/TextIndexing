@@ -33,6 +33,13 @@ namespace Primitive.Text.Indexing.UI
             get { return (IndexerViewModel) DataContext; }
         }
 
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            // delay indexing for 0.5 sec after window is loaded
+            await Task.Delay(TimeSpan.FromSeconds(0.5));
+            ViewModel.StartIndexingAllSources();
+        }
+
         private void Window_Drop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))

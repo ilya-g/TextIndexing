@@ -72,7 +72,7 @@ namespace Primitive.Text.Indexing
         }
 
 
-        public DocumentSourceIndexer AddDocumentSource([NotNull] IDocumentSource source)
+        public DocumentSourceIndexer AddDocumentSource([NotNull] IDocumentSource source, bool autoStartIndexing = true)
         {
             if (source == null)
                 throw new ArgumentNullException("source");
@@ -80,10 +80,13 @@ namespace Primitive.Text.Indexing
             var indexedSource = new DocumentSourceIndexer(
                 source, 
                 GetDocumentIndexWords,
-                Observer.Create<IndexedDocument>(MergeIndexedDocument));
+                MergeIndexedDocument);
 
             lock (this)
                 documentSources = documentSources.Add(indexedSource);
+
+            if (autoStartIndexing)
+                indexedSource.StartIndexing();
 
             return indexedSource;
         }
@@ -104,7 +107,7 @@ namespace Primitive.Text.Indexing
 
         private Task<ISet<string>> GetDocumentIndexWords(DocumentInfo documentInfo)
         {
-            return Observable.Using(
+            var documentReader = Observable.Using(
                 () => documentInfo.Source.OpenDocument(documentInfo),
                 reader =>
                     StreamParser.ExtractWords(reader ?? StreamReader.Null).Aggregate(
@@ -113,8 +116,9 @@ namespace Primitive.Text.Indexing
                         {
                             set.Add(word);
                             return set;
-                        }))
-                .ToTask();
+                        }));
+
+            return documentReader.ToTask();
         }
 
         private void MergeIndexedDocument(IndexedDocument indexedDocument)

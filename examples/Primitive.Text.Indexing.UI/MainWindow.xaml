@@ -9,7 +9,9 @@
     x:Class="Primitive.Text.Indexing.UI.MainWindow"
     Title="Primitive Text Indexer" Height="600" Width="800"
     AllowDrop="True"
-    d:DataContext="{d:DesignInstance ui:IndexerViewModel}" Drop="Window_Drop">
+    d:DataContext="{d:DesignInstance ui:IndexerViewModel}" 
+    Loaded="Window_Loaded"
+    Drop="Window_Drop">
     <Window.Resources>
         <commands:CommandReference x:Key="RemoveDocumentSourceCommand" Command="{Binding RemoveDocumentSourceCommand}" />
     </Window.Resources>
@@ -42,7 +44,18 @@
                         </StackPanel.Resources>
                         <ContentPresenter Content="{Binding DocumentSource}" TextElement.FontSize="14" />
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding State}" Width="200" />
+                            <TextBlock Text="{Binding State}" Width="200">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding State}" Value="{x:Static sources:DocumentSourceIndexerState.Failed}">
+                                                <Setter Property="Foreground" Value="OrangeRed" />
+                                                <Setter Property="ToolTip" Value="{Binding Error}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                             <TextBlock Width="100">
                                 Found: <Run Text="{Binding DocumentsFound, Mode=OneWay}" />
                             </TextBlock>
