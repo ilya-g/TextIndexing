@@ -235,7 +235,9 @@ namespace Primitive.Text.Indexing
             StopIndexing();
         }
 
-
+        /// <summary>
+        /// Occurs when a property value changes.
+        /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
 
         [NotifyPropertyChangedInvocator]

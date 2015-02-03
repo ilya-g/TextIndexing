@@ -67,6 +67,7 @@
     <Compile Include="Indexing\Internal\InternalSortedList.cs" />
     <Compile Include="Indexing\Internal\LockingStrategy.cs" />
     <Compile Include="Indexing\Internal\StringComparisonComparer.cs" />
+    <Compile Include="Documents\WordDocuments.cs" />
     <Compile Include="Parsers\ILineParser.cs" />
     <Compile Include="Parsers\IStreamParser.cs" />
     <Compile Include="Parsers\RegexLineParser.cs" />

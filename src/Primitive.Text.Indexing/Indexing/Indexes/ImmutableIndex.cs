@@ -3,13 +3,18 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Indexing.Internal;
 
 namespace Primitive.Text.Indexing
 {
 
-    public sealed class ImmutableIndex : IIndex
+    /// <summary>
+    ///  <see cref="IIndex"/> implementation, that uses immutable structures to provide non-blocking query
+    ///  and zero-cost snapshot operations.
+    /// </summary>
+    internal sealed class ImmutableIndex : IIndex
     {
 
         private readonly object lockIndex = new object();
@@ -28,18 +33,20 @@ namespace Primitive.Text.Indexing
         /// </summary>
         public StringComparison WordComparison { get { return wordComparer.ComparisonType; } }
 
-        public IEnumerable<DocumentInfo> QueryDocuments(string word)
+        public WordDocuments GetExactWord(string word)
         {
             IImmutableSet<DocumentInfo> documents;
             if (!wordIndex.TryGetValue(word, out documents))
-                return Enumerable.Empty<DocumentInfo>(); ;
-            return documents;
+                return new WordDocuments(word, ImmutableArray<DocumentInfo>.Empty);
+            return new WordDocuments(word, documents);
         }
 
-        public IList<KeyValuePair<string, IEnumerable<DocumentInfo>>> QueryDocumentsStartsWith(string word)
+        public IList<WordDocuments> GetWordsStartWith(string wordBeginning)
         {
+            if (wordBeginning == null) throw new ArgumentNullException("wordBeginning");
+
             var wordIndex = this.wordIndex;
-            var startingIndex = wordIndex.IndexOfKey(word);
+            var startingIndex = wordIndex.IndexOfKey(wordBeginning);
             if (startingIndex < 0)
                 startingIndex = ~startingIndex;
             return (
@@ -47,18 +54,20 @@ namespace Primitive.Text.Indexing
                     .Select(index =>
                     {
                         var item = wordIndex[index];
-                        return new KeyValuePair<string, IEnumerable<DocumentInfo>>(item.Key, item.Value);
+                        return new WordDocuments(item.Key, item.Value);
                     })
-                    .TakeWhile(item => item.Key.StartsWith(word, WordComparison))
+                    .TakeWhile(item => item.Word.StartsWith(wordBeginning, WordComparison))
                 ).ToList();
         }
 
-        public IList<KeyValuePair<string, IEnumerable<DocumentInfo>>> QueryDocumentsMatching(Func<string, bool> wordPredicate)
+        public IList<WordDocuments> GetWordsMatching(Func<string, bool> wordPredicate)
         {
+            if (wordPredicate == null) throw new ArgumentNullException("wordPredicate");
+
             return (
                 from item in wordIndex
                 where wordPredicate(item.Key)
-                select new KeyValuePair<string, IEnumerable<DocumentInfo>>(item.Key, item.Value)
+                select new WordDocuments(item.Key, item.Value)
                 ).ToList();
         }
 
@@ -78,18 +87,13 @@ namespace Primitive.Text.Indexing
             };
         }
 
-        /// <summary>
-        ///  Merges document word index into this index
-        /// </summary>
-        /// <param name="documentInfo">Document to include in index</param>
-        /// <param name="indexWords">Words to index document by</param>
-        /// <remarks>
-        ///  Merge is an atomic operation
-        /// </remarks>
-        public void Merge(DocumentInfo documentInfo, IEnumerable<string> indexWords)
+        public void Merge(DocumentInfo document, IEnumerable<string> indexWords)
         {
+            if (document == null) throw new ArgumentNullException("document");
+            if (indexWords == null) throw new ArgumentNullException("indexWords");
+
             var sourceWords = new SortedSet<string>(indexWords, wordComparer).ToList();
-            var singleDocumentList = ImmutableHashSet.Create(documentInfo);
+            var singleDocumentList = ImmutableHashSet.Create(document);
             // Merge join sorted word list with wordIndex list
             lock (lockIndex)
             {
@@ -125,13 +129,13 @@ namespace Primitive.Text.Indexing
                     else if (compareResult > 0)
                     {
                         var item = oldIndex[idxTarget];
-                        newIndex.AddSorted(item.Key, item.Value.Remove(documentInfo));
+                        newIndex.AddSorted(item.Key, item.Value.Remove(document));
                         idxTarget += 1;
                     }
                     else
                     {
                         var item = oldIndex[idxTarget];
-                        newIndex.AddSorted(item.Key, item.Value.Add(documentInfo));
+                        newIndex.AddSorted(item.Key, item.Value.Add(document));
                         idxSource += 1;
                         idxTarget += 1;
                     }

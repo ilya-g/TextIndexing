@@ -37,24 +37,24 @@ namespace Primitive.Text.Indexing
 
             foreach (var word in words)
             {
-                Assert.That(index.QueryDocuments(word).Single(), Is.EqualTo(document));
+                Assert.That(index.GetExactWord(word).Single(), Is.EqualTo(document));
             }
 
             foreach (var partialWord in new[]{"cat", "ca"})
             {
-                var catDocuments = index.QueryDocumentsStartsWith(partialWord);
+                var catDocuments = index.GetWordsStartWith(partialWord);
                 Assert.That(catDocuments, Has.Count.EqualTo(words.Count()));
-                foreach (var item in catDocuments)
+                foreach (var documents in catDocuments)
                 {
-                    Assert.That(item.Value.Single(), Is.EqualTo(document));
+                    Assert.That(documents.Single(), Is.EqualTo(document));
                 }
             }
-            Assert.That(index.QueryDocumentsStartsWith("cate"), Has.Count.EqualTo(1));
+            Assert.That(index.GetWordsStartWith("cate"), Has.Count.EqualTo(1));
 
             index.Merge(document, Enumerable.Empty<string>());
             foreach (var word in words)
             {
-                Assert.That(index.QueryDocuments(word), Is.Empty);
+                Assert.That(index.GetExactWord(word), Is.Empty);
             }
         }
 
@@ -68,9 +68,9 @@ namespace Primitive.Text.Indexing
 
             index.RemoveDocumentsMatching(documentPredicate);
 
-            foreach (var item in index.QueryDocumentsMatching(_ => true))
+            foreach (var documents in index.GetWordsMatching(_ => true))
             {
-                Assert.That(item.Value.Where(documentPredicate), Is.Empty);
+                Assert.That(documents.Where(documentPredicate), Is.Empty);
             }
         }
 
@@ -89,8 +89,8 @@ namespace Primitive.Text.Indexing
             index.Merge(document, words);
             Assert.That(index.GetIndexedWords(), Has.Count.EqualTo(2));
 
-            Assert.That(index.QueryDocumentsStartsWith("schroe"), Has.Count.EqualTo(2));
-            Assert.That(index.QueryDocumentsStartsWith("schrœ"), Has.Count.EqualTo(2));
+            Assert.That(index.GetWordsStartWith("schroe"), Has.Count.EqualTo(2));
+            Assert.That(index.GetWordsStartWith("schrœ"), Has.Count.EqualTo(2));
         }
 
         [Test]
@@ -108,7 +108,7 @@ namespace Primitive.Text.Indexing
             index.Merge(document2, words2);
 
             Assert.That(snapshot.GetIndexedWords(), Is.EquivalentTo(words));
-            Assert.That(snapshot.QueryDocumentsMatching(_ => true).SelectMany(item => item.Value).Distinct().Single(), Is.EqualTo(document));
+            Assert.That(snapshot.GetWordsMatching(_ => true).SelectMany(item => item).Distinct().Single(), Is.EqualTo(document));
         }
 
 
@@ -125,7 +125,7 @@ namespace Primitive.Text.Indexing
 
             var rng = new Random();
             var words = index.GetIndexedWords();
-            MeasureUntil(TimeSpan.FromSeconds(1), "Query", () => index.QueryDocuments(words[rng.Next(words.Count)]));
+            MeasureUntil(TimeSpan.FromSeconds(1), "Query", () => index.GetExactWord(words[rng.Next(words.Count)]));
         }
 
         [Test]
@@ -135,9 +135,9 @@ namespace Primitive.Text.Indexing
             int maxWords = 1000;
             var documents = GenerateDocuments(maxDocuments, maxWords);
 
-            Action<string, IEnumerable<DocumentInfo>> validateInvariant = (indexWord, wordDocuments) =>
+            Action<WordDocuments> validateInvariant = wordDocuments =>
             {
-                int wordNumber = int.Parse(indexWord.Substring(4));
+                int wordNumber = int.Parse(wordDocuments.Word.Substring(4));
                 Assert.That(wordDocuments.Count(), Is.LessThanOrEqualTo(maxDocuments));
                 Assert.That(wordDocuments.All(d => int.Parse(d.Id) % 2 == wordNumber % 2));
             };
@@ -156,16 +156,16 @@ namespace Primitive.Text.Indexing
                     {
                         var wordId = rnd.Next(2, maxWords);
                         string word = string.Format("word{0:000}", wordId);
-                        var wordDocuments = index.QueryDocuments(word);
+                        var wordDocuments = index.GetExactWord(word);
                         Interlocked.Add(ref totalDocuments, wordDocuments.Count());
                         if (wordId < maxWords / 100)
-                            validateInvariant(word, wordDocuments);
+                            validateInvariant(wordDocuments);
                     }, maxIterations: 100000);
                     Console.WriteLine("Queried {0} documents total", totalDocuments);
                 },
                 () =>
                 {
-                    Thread.Sleep(3000);
+                    Thread.Sleep(3500);
                     MeasureUntil(TimeSpan.FromSeconds(4), "Snapshot", () => index.Snapshot());
                 }, 
                 () => PopulateIndex(index, documents));
@@ -174,7 +174,7 @@ namespace Primitive.Text.Indexing
             Assert.That(indexedWords.Count, Is.LessThanOrEqualTo(maxWords));
             foreach (var indexWord in indexedWords)
             {
-                validateInvariant(indexWord, index.QueryDocuments(indexWord));
+                validateInvariant(index.GetExactWord(indexWord));
             }
         }
 

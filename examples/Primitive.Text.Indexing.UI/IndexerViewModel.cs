@@ -96,15 +96,15 @@ namespace Primitive.Text.Indexing.UI
         private static IEnumerable<DocumentInfo> GetTermDocuments(IIndex index, string term)
         {
             if (term.EndsWith("*"))
-                return index.QueryDocumentsStartsWith(term.TrimEnd('*')).SelectMany(wordDocuments => wordDocuments.Value);
+                return index.GetWordsStartWith(term.TrimEnd('*')).SelectMany(wordDocuments => wordDocuments);
             
             if (term.StartsWith("*"))
             {
                 term = term.TrimStart('*');
-                return index.QueryDocumentsMatching(word => word.EndsWith(term, index.WordComparison)).SelectMany(wordDocuments => wordDocuments.Value);
+                return index.GetWordsMatching(word => word.EndsWith(term, index.WordComparison)).SelectMany(wordDocuments => wordDocuments);
             }
             
-            return index.QueryDocuments(term);
+            return index.GetExactWord(term);
         }
 
         public void ExploreToDocument(DocumentInfo document)
