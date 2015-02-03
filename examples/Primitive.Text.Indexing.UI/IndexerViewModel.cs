@@ -23,7 +23,7 @@ namespace Primitive.Text.Indexing.UI
 
         public IndexerViewModel()
         {
-            DefaultFilterPattern = "*.txt";
+            DefaultSearchPattern = new SearchPattern("*.txt");
             RemoveDocumentSourceCommand = new DelegateCommand<DocumentSourceIndexer>(RemoveDocumentSource);
             SearchCommand = new DelegateCommand(ExecuteQuery);
 
@@ -39,7 +39,7 @@ namespace Primitive.Text.Indexing.UI
 
         public IReadOnlyList<DocumentSourceIndexer> DocumentSources { get { return Indexer.DocumentSources; } }
 
-        public string DefaultFilterPattern { get; set; }
+        public SearchPattern DefaultSearchPattern { get; set; }
 
         public string QueryText
         {
@@ -139,7 +139,7 @@ namespace Primitive.Text.Indexing.UI
                 try
                 {
                     if (Directory.Exists(path))
-                        documentSource = new DirectoryDocumentSource(path, DefaultFilterPattern);
+                        documentSource = new DirectoryDocumentSource(path, DefaultSearchPattern);
                     else
                         documentSource = new SingleFileDocumentSource(path);
                 }

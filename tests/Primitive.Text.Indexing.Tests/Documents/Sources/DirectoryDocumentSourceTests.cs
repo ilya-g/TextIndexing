@@ -30,14 +30,13 @@ namespace Primitive.Text.Documents.Sources
 
 
         [Test]
-        [Ignore("Not implemented")]
-        public void Create_ValidatesFilterIsCorrect()
+        public void Create_ValidatesSearchPatternIsCorrect()
         {
-            var incorrectFilter = "/";
+            var incorrectPattern = "/";
             InNewTempDirectory(path =>
             {
-                Assert.That(() => new DirectoryDocumentSource(path, incorrectFilter), Throws.ArgumentException);
-                Assert.That(() => new DirectoryDocumentSource(path, null), Throws.InstanceOf<ArgumentNullException>());
+                Assert.That(() => new DirectoryDocumentSource(path, (string)null), Throws.InstanceOf<ArgumentNullException>());
+                Assert.That(() => new DirectoryDocumentSource(path, incorrectPattern), Throws.ArgumentException);
             });
         }
 

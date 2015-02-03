@@ -11,27 +11,31 @@ namespace Primitive.Text.Documents.Sources
 {
     public class DirectoryDocumentSource : FileSystemDocumentSource
     {
-        private readonly string filter;
+        private readonly SearchPattern searchPattern;
         private readonly DirectoryInfo rootInfo;
 
         public string RootPath { get { return rootInfo.FullName; } }
-        public string Filter { get { return filter; } }
+        public SearchPattern SearchPattern { get { return searchPattern; } }
 
-        public DirectoryDocumentSource([NotNull] string rootPath) : this(rootPath, "*") {}
+        public DirectoryDocumentSource([NotNull] string rootPath) 
+            : this(rootPath, new SearchPattern("*")) {}
 
-        public DirectoryDocumentSource([NotNull] string rootPath, [NotNull] string filter)
+        public DirectoryDocumentSource([NotNull] string rootPath, [NotNull] string searchPattern) 
+            : this(rootPath, new SearchPattern(searchPattern)) {}
+
+        public DirectoryDocumentSource([NotNull] string rootPath, [NotNull] SearchPattern searchPattern)
         {
             if (rootPath == null) throw new ArgumentNullException("rootPath");
-            if (filter == null) throw new ArgumentNullException("filter");
+            if (searchPattern == null) throw new ArgumentNullException("searchPattern");
 
-            this.filter = filter;
+            this.searchPattern = searchPattern;
             this.rootInfo = new DirectoryInfo(rootPath);
         }
 
         public override IObservable<DocumentInfo> FindAllDocuments()
         {
             return Observable.Defer(() =>
-                SafeEnumerateAllFiles(rootInfo, filter)
+                SafeEnumerateAllFiles(rootInfo, searchPattern.ToString())
                     .Select(fileInfo => new DocumentInfo(fileInfo.FullName, this))
                     .ToObservable())
                 .SubscribeOn(Scheduler.Default);
@@ -39,7 +43,7 @@ namespace Primitive.Text.Documents.Sources
 
         public override IObservable<DocumentInfo> WatchForChangedDocuments()
         {
-            return CreateWatcher(rootInfo.FullName, filter)
+            return CreateWatcher(rootInfo.FullName, searchPattern.ToString())
                 .SelectMany(e =>
                     e is RenamedEventArgs
                         ? ChangesFromRenameEventArgs((RenamedEventArgs) e).ToObservable()
@@ -48,15 +52,15 @@ namespace Primitive.Text.Documents.Sources
 
         private IEnumerable<DocumentInfo> ChangesFromRenameEventArgs(RenamedEventArgs e)
         {
-            return new[] {DocumentFromPath(e.OldFullPath), DocumentFromPath(e.FullPath)};
+            return new[] {e.OldFullPath, e.FullPath}.Where(SearchPattern.IsMatch).Select(DocumentFromPath);
         }
 
-        private static IEnumerable<FileInfo> SafeEnumerateAllFiles(DirectoryInfo directory, string filter)
+        private static IEnumerable<FileInfo> SafeEnumerateAllFiles(DirectoryInfo directory, string seachPattern)
         {
             return EnumerateIgnoreException(
                 () => Enumerable.Concat(
-                    directory.EnumerateFiles(filter), 
-                    directory.EnumerateDirectories().SelectMany(nested => SafeEnumerateAllFiles(nested, filter))), 
+                    directory.EnumerateFiles(seachPattern), 
+                    directory.EnumerateDirectories().SelectMany(nested => SafeEnumerateAllFiles(nested, seachPattern))), 
                 shouldIgnore: e => e is UnauthorizedAccessException);
         }
 

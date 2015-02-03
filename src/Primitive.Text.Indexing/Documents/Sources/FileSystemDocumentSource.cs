@@ -42,11 +42,11 @@ namespace Primitive.Text.Documents.Sources
             return new DocumentInfo(fileName, this);
         }
 
-        protected static IObservable<FileSystemEventArgs> CreateWatcher(string path, string filter)
+        protected static IObservable<FileSystemEventArgs> CreateWatcher(string path, string filterPattern)
         {
             return Observable.Create<FileSystemEventArgs>(obs =>
             {
-                var watcher = new FileSystemWatcher(path, filter)
+                var watcher = new FileSystemWatcher(path, filterPattern)
                 {
                     IncludeSubdirectories = true,
                     EnableRaisingEvents = true,

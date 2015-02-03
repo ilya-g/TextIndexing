@@ -17,7 +17,7 @@
     </Window.Resources>
     <DockPanel Margin="5,0">
         <DockPanel DockPanel.Dock="Top" Margin="0,5">
-            <TextBox DockPanel.Dock="Right" Width="80" Text="{Binding DefaultFilterPattern, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBox DockPanel.Dock="Right" Width="80" Text="{Binding DefaultSearchPattern, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"/>
             <TextBlock VerticalAlignment="Center" DockPanel.Dock="Right" Margin="5,0">Default search pattern for added directories:</TextBlock>
             <TextBlock VerticalAlignment="Center">Drop files or directories to this window to include them in index</TextBlock>
         </DockPanel>
@@ -32,7 +32,7 @@
                                         <Bold>Directory:</Bold> 
                                         <Run Text="{Binding RootPath, Mode=OneTime}" />
                                         |
-                                        <Run Text="{Binding Filter, Mode=OneTime}"/>
+                                        <Run Text="{Binding SearchPattern, Mode=OneTime}"/>
                                 </TextBlock>
                             </DataTemplate>
                             <DataTemplate DataType="{x:Type sources:SingleFileDocumentSource}">
