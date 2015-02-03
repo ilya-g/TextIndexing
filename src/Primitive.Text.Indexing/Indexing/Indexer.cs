@@ -26,10 +26,10 @@ namespace Primitive.Text.Indexing
         public IStreamParser StreamParser { get; private set; }
 
         [NotNull]
-        public IReadOnlyList<DocumentSourceIndexer> DocumentSources { get { return documentSources; } }
+        public IReadOnlyList<SourceIndexingAgent> DocumentSources { get { return documentSources; } }
 
 
-        private volatile IImmutableList<DocumentSourceIndexer> documentSources;
+        private volatile IImmutableList<SourceIndexingAgent> documentSources;
 
         private readonly IComparer<string> wordComparer;
 
@@ -43,7 +43,7 @@ namespace Primitive.Text.Indexing
             StreamParser = streamParser;
 
             wordComparer = new StringComparisonComparer(index.WordComparison);
-            documentSources = ImmutableList<DocumentSourceIndexer>.Empty;
+            documentSources = ImmutableList<SourceIndexingAgent>.Empty;
         }
 
         /// <summary>
@@ -72,12 +72,12 @@ namespace Primitive.Text.Indexing
         }
 
 
-        public DocumentSourceIndexer AddDocumentSource([NotNull] IDocumentSource source, bool autoStartIndexing = true)
+        public SourceIndexingAgent AddDocumentSource([NotNull] IDocumentSource source, bool autoStartIndexing = true)
         {
             if (source == null)
                 throw new ArgumentNullException("source");
 
-            var indexedSource = new DocumentSourceIndexer(
+            var indexedSource = new SourceIndexingAgent(
                 source, 
                 GetDocumentIndexWords,
                 MergeIndexedDocument);
@@ -91,7 +91,7 @@ namespace Primitive.Text.Indexing
             return indexedSource;
         }
 
-        public void RemoveDocumentSource([NotNull] DocumentSourceIndexer documentSourceIndexer)
+        public void RemoveDocumentSource([NotNull] SourceIndexingAgent documentSourceIndexer)
         {
             if (documentSourceIndexer == null)
                 throw new ArgumentNullException("documentSourceIndexer");

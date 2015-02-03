@@ -2,18 +2,18 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Primitive.Text.Documents;
+using Primitive.Text.Documents.Sources;
 
-namespace Primitive.Text.Documents.Sources
+namespace Primitive.Text.Indexing
 {
-    public sealed class DocumentSourceIndexer : IDisposable, INotifyPropertyChanged
+    public sealed class SourceIndexingAgent : IDisposable, INotifyPropertyChanged
     {
         private static readonly int maxConcurrentIndexing = 8;
 
@@ -28,15 +28,15 @@ namespace Primitive.Text.Documents.Sources
 
         public IDocumentSource DocumentSource { get; private set; }
 
-        public DocumentSourceIndexerState State
+        public SourceIndexingState State
         {
             get
             {
                 return 
-                    subscription == null ? DocumentSourceIndexerState.Stopped :
-                    error != null ? DocumentSourceIndexerState.Failed :
-                    runningParsers > 0 ? DocumentSourceIndexerState.Indexing :
-                        DocumentSourceIndexerState.Watching;
+                    subscription == null ? SourceIndexingState.Stopped :
+                    error != null ? SourceIndexingState.Failed :
+                    runningParsers > 0 ? SourceIndexingState.Indexing :
+                        SourceIndexingState.Watching;
             }
         }
 
@@ -80,7 +80,7 @@ namespace Primitive.Text.Documents.Sources
             }
         }
 
-        internal DocumentSourceIndexer([NotNull] IDocumentSource source, [NotNull] Func<DocumentInfo, Task<ISet<string>>> documentParser,
+        internal SourceIndexingAgent([NotNull] IDocumentSource source, [NotNull] Func<DocumentInfo, Task<ISet<string>>> documentParser,
             [NotNull] Action<IndexedDocument> indexedDocumentAction)
         {
             if (source == null) throw new ArgumentNullException("source");
@@ -190,7 +190,7 @@ namespace Primitive.Text.Documents.Sources
         private void OnStateChanged() { OnPropertyChanged("State");}
     }
 
-    public enum DocumentSourceIndexerState
+    public enum SourceIndexingState
     {
         Stopped,
         Indexing,

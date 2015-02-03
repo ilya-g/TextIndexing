@@ -5,6 +5,7 @@
     xmlns:ui="clr-namespace:Primitive.Text.Indexing.UI"
     xmlns:sources="clr-namespace:Primitive.Text.Documents.Sources;assembly=Primitive.Text.Indexing"
     xmlns:commands="clr-namespace:Primitive.Text.Indexing.UI.Commands"
+    xmlns:indexing="clr-namespace:Primitive.Text.Indexing;assembly=Primitive.Text.Indexing"
     mc:Ignorable="d" 
     x:Class="Primitive.Text.Indexing.UI.MainWindow"
     Title="Primitive Text Indexer" Height="600" Width="800"
@@ -48,7 +49,7 @@
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding State}" Value="{x:Static sources:DocumentSourceIndexerState.Failed}">
+                                            <DataTrigger Binding="{Binding State}" Value="{x:Static indexing:DocumentSourceIndexerState.Failed}">
                                                 <Setter Property="Foreground" Value="OrangeRed" />
                                                 <Setter Property="ToolTip" Value="{Binding Error}" />
                                             </DataTrigger>
