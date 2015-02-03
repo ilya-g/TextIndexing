@@ -49,7 +49,7 @@
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding State}" Value="{x:Static indexing:DocumentSourceIndexerState.Failed}">
+                                            <DataTrigger Binding="{Binding State}" Value="{x:Static indexing:SourceIndexingState.Failed}">
                                                 <Setter Property="Foreground" Value="OrangeRed" />
                                                 <Setter Property="ToolTip" Value="{Binding Error}" />
                                             </DataTrigger>

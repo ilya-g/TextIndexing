@@ -1,35 +1,47 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
-using System.Linq;
-using System.Reactive;
-using System.Reactive.Concurrency;
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
-using System.Text;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Primitive.Text.Documents;
 using Primitive.Text.Documents.Sources;
 using Primitive.Text.Indexing.Internal;
 using Primitive.Text.Parsers;
 
 namespace Primitive.Text.Indexing
 {
+    /// <summary>
+    ///  Exposes properties and methods to manage indexed document sources and 
+    ///  provides the access to the index
+    /// </summary>
+    /// <remarks>
+    /// </remarks>
     public sealed class Indexer
     {
+        /// <summary>
+        ///  Gets the <see cref="IIndex"/> instance, used to store the relationship between words and documents
+        /// </summary>
         [NotNull]
         public IIndex Index { get; private set; }
         
+        /// <summary>
+        ///  Gets the <see cref="IStreamParser"/> used to extract index words from the document stream
+        /// </summary>
         [NotNull]
         public IStreamParser StreamParser { get; private set; }
 
+        /// <summary>
+        ///  Gets the list of sources included into this index
+        /// </summary>
+        /// <value>
+        ///  The list containing <see cref="SourceIndexingAgent"/> instances for each <see cref="IDocumentSource"/> added.
+        /// </value>
+        /// <remarks>
+        ///  Use <see cref="AddSource"/> and <see cref="RemoveSource"/> methods to change the list of sources
+        /// </remarks>
         [NotNull]
-        public IReadOnlyList<SourceIndexingAgent> DocumentSources { get { return documentSources; } }
+        public IReadOnlyList<SourceIndexingAgent> Sources { get { return sources; } }
 
 
-        private volatile IImmutableList<SourceIndexingAgent> documentSources;
+        private volatile IImmutableList<SourceIndexingAgent> sources;
 
         private readonly IComparer<string> wordComparer;
 
@@ -43,13 +55,12 @@ namespace Primitive.Text.Indexing
             StreamParser = streamParser;
 
             wordComparer = new StringComparisonComparer(index.WordComparison);
-            documentSources = ImmutableList<SourceIndexingAgent>.Empty;
+            sources = ImmutableList<SourceIndexingAgent>.Empty;
         }
 
         /// <summary>
         ///  Creates Indexer with the default <see cref="IndexerCreationOptions"/>
         /// </summary>
-        /// <returns></returns>
         public static Indexer Create()
         {
             return Create(new IndexerCreationOptions());
@@ -59,7 +70,6 @@ namespace Primitive.Text.Indexing
         ///  Creates Indexer with the specified <see cref="IndexerCreationOptions"/>
         /// </summary>
         /// <param name="options">Options that define indexer behavior: word comparsion, index locking, document parser</param>
-        /// <returns></returns>
         public static Indexer Create([NotNull] IndexerCreationOptions options)
         {
             if (options == null) throw new ArgumentNullException("options");
@@ -72,70 +82,60 @@ namespace Primitive.Text.Indexing
         }
 
 
-        public SourceIndexingAgent AddDocumentSource([NotNull] IDocumentSource source, bool autoStartIndexing = true)
+        /// <summary>
+        ///  Creates <see cref="SourceIndexingAgent"/> for the specified <paramref name="source"/> and 
+        ///  adds it to the <see cref="Sources"/> list
+        /// </summary>
+        /// <param name="source">The source, providing documents to include in the index</param>
+        /// <param name="autoStartIndexing">Specifies, whether to start indexing this source immediately</param>
+        /// <returns>Returns <see cref="SourceIndexingAgent"/> created for the <paramref name="source"/></returns>
+        public SourceIndexingAgent AddSource([NotNull] IDocumentSource source, bool autoStartIndexing = true)
         {
             if (source == null)
                 throw new ArgumentNullException("source");
 
-            var indexedSource = new SourceIndexingAgent(
-                source, 
-                GetDocumentIndexWords,
-                MergeIndexedDocument);
+            var sourceIndexingAgent = new SourceIndexingAgent(this, source);
 
             lock (this)
-                documentSources = documentSources.Add(indexedSource);
+                sources = sources.Add(sourceIndexingAgent);
 
             if (autoStartIndexing)
-                indexedSource.StartIndexing();
+                sourceIndexingAgent.StartIndexing();
 
-            return indexedSource;
+            return sourceIndexingAgent;
         }
 
-        public void RemoveDocumentSource([NotNull] SourceIndexingAgent documentSourceIndexer)
+        /// <summary>
+        ///  Removes the specified <paramref name="sourceIndexingAgent"/> from the <see cref="Sources"/> list
+        /// </summary>
+        /// <param name="sourceIndexingAgent">The <see cref="SourceIndexingAgent"/> to remove from list</param>
+        /// <remarks>
+        ///  If the <see cref="Sources"/> list doesn't contain the specified <paramref name="sourceIndexingAgent"/>,
+        ///  this method does nothing.
+        /// </remarks>
+        public void RemoveSource([NotNull] SourceIndexingAgent sourceIndexingAgent)
         {
-            if (documentSourceIndexer == null)
-                throw new ArgumentNullException("documentSourceIndexer");
+            if (sourceIndexingAgent == null)
+                throw new ArgumentNullException("sourceIndexingAgent");
 
             lock (this)
-                documentSources = documentSources.Remove(documentSourceIndexer);
+            {
+                var newSources = sources.Remove(sourceIndexingAgent);
+                if (sources == newSources)
+                    return;
+                sources = newSources;
+            }
 
-            documentSourceIndexer.StopIndexing();
+            sourceIndexingAgent.StopIndexing();
             // remove all documents from this source from index
-            Index.RemoveDocumentsMatching(document => document.Source == documentSourceIndexer.DocumentSource);
+            Index.RemoveDocumentsMatching(document => document.Source == sourceIndexingAgent.DocumentSource);
         }
 
-
-        private Task<ISet<string>> GetDocumentIndexWords(DocumentInfo documentInfo)
+        internal ISet<string> CreateEmptyWordSet()
         {
-            var documentReader = Observable.Using(
-                () => documentInfo.Source.OpenDocument(documentInfo),
-                reader =>
-                    StreamParser.ExtractWords(reader ?? StreamReader.Null).Aggregate(
-                        new SortedSet<string>(wordComparer) as ISet<string>,
-                        (set, word) =>
-                        {
-                            set.Add(word);
-                            return set;
-                        }))
-                // consider file doesn't contain any words if access is denied
-                .Catch((UnauthorizedAccessException e) => Observable.Return(new SortedSet<string>() as ISet<string>));
-
-            return RetryOn(documentReader, shouldRetry: e => e is IOException, retryTimes: 4, retryDelay: TimeSpan.FromSeconds(1))
-                .ToTask();
+            return new SortedSet<string>(wordComparer);
         }
 
-        private static IObservable<T> RetryOn<T>(IObservable<T> source, Func<Exception, bool> shouldRetry, int retryTimes, TimeSpan retryDelay)
-        {
-            return source.Catch(
-                (Exception e) => shouldRetry(e) && retryTimes > 0 
-                    ? RetryOn(source, shouldRetry, retryTimes - 1, retryDelay).DelaySubscription(retryDelay)
-                    : Observable.Throw<T>(e));
-        } 
-
-        private void MergeIndexedDocument(IndexedDocument indexedDocument)
-        {
-            Index.Merge(indexedDocument.Document, indexedDocument.IndexWords);
-        }
 
     }
 }

@@ -30,14 +30,17 @@ namespace Primitive.Text.Indexing.UI
             var baseDirectory = MoveUpThroughHierarhy(new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory), 5).FullName;
 
             Indexer = Indexer.Create(new IndexerCreationOptions() { IndexLocking = IndexLocking.NoLocking});
-            Indexer.AddDocumentSource(new DirectoryDocumentSource(baseDirectory, "*.cs"), autoStartIndexing: false);
-            Indexer.AddDocumentSource(new DirectoryDocumentSource(baseDirectory, "*.xml"), autoStartIndexing: false);
+            Indexer.AddSource(new DirectoryDocumentSource(baseDirectory, "*.cs"), autoStartIndexing: false);
+            Indexer.AddSource(new DirectoryDocumentSource(baseDirectory, "*.xml"), autoStartIndexing: false);
         }
 
 
         public Indexer Indexer { get; private set; }
 
-        public IReadOnlyList<SourceIndexingAgent> DocumentSources { get { return Indexer.DocumentSources; } }
+        public IReadOnlyList<SourceIndexingAgent> DocumentSources
+        {
+            get { return Indexer.Sources; }
+        }
 
         public SearchPattern DefaultSearchPattern { get; set; }
 
@@ -148,18 +151,18 @@ namespace Primitive.Text.Indexing.UI
                     Console.WriteLine(e);
                     continue;
                 }
-                Indexer.AddDocumentSource(documentSource);
+                Indexer.AddSource(documentSource);
             }
             OnPropertyChanged("DocumentSources");
         }
 
 
 
-        private void RemoveDocumentSource(SourceIndexingAgent documentSourceIndexer)
+        private void RemoveDocumentSource(SourceIndexingAgent sourceIndexingAgent)
         {
-            if (documentSourceIndexer != null)
+            if (sourceIndexingAgent != null)
             {
-                Indexer.RemoveDocumentSource(documentSourceIndexer);
+                Indexer.RemoveSource(sourceIndexingAgent);
                 OnPropertyChanged("DocumentSources");
                 ExecuteQuery();
             }
