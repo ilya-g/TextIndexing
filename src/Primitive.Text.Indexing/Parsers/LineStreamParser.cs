@@ -6,6 +6,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 
 namespace Primitive.Text.Parsers
 {
@@ -20,8 +21,9 @@ namespace Primitive.Text.Parsers
 
 
 
-        public IObservable<string> ExtractWords(StreamReader sourceReader)
+        public IObservable<string> ExtractWords([NotNull] TextReader sourceReader)
         {
+            if (sourceReader == null) throw new ArgumentNullException("sourceReader");
 
             return Observable.Create<string>(obs =>
             {
@@ -31,9 +33,11 @@ namespace Primitive.Text.Parsers
                 {
                     try
                     {
-                        while (!sourceReader.EndOfStream && !subscription.IsDisposed)
+                        while (!subscription.IsDisposed)
                         {
                             var line = sourceReader.ReadLine();
+                            if (line == null)
+                                break;
                             foreach (var word in innerParser.ExtractWords(line))
                                 obs.OnNext(word);
                         }
@@ -52,9 +56,11 @@ namespace Primitive.Text.Parsers
             //{
             //    try
             //    {
-            //        while (!sourceReader.EndOfStream && !cancel.IsCancellationRequested)
+            //        while (!cancel.IsCancellationRequested)
             //        {
             //            var line = await sourceReader.ReadLineAsync().ConfigureAwait(false);
+            //            if (line == null)
+            //                break;
             //            foreach (var word in innerParser.ExtractWords(line))
             //                obs.OnNext(word);
             //        }
