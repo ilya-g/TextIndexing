@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
+using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -30,6 +30,8 @@ namespace Primitive.Text.Indexing
 
         private volatile int runningParsers;
         private volatile Exception error;
+
+        private readonly Subject<Tuple<DocumentInfo, Exception>> indexingErrors = new Subject<Tuple<DocumentInfo, Exception>>();
 
         /// <summary>
         ///  The Indexer this <see cref="SourceIndexingAgent"/> belongs to.
@@ -115,6 +117,17 @@ namespace Primitive.Text.Indexing
             }
         }
 
+        /// <summary>
+        ///  Exposes hot observable stream of errors, encountered during parsing or indexing individual documents
+        /// </summary>
+        /// <remarks>
+        ///  Document indexing error does not lead this instance to the <see cref="SourceIndexingState.Failed"/> state
+        ///  and is to be ignored.
+        ///  This stream provides the way to observe such errors.
+        /// </remarks>
+        public IObservable<Tuple<DocumentInfo, Exception>> IndexingErrors { get { return indexingErrors; } }
+
+
         internal SourceIndexingAgent([NotNull] Indexer indexer, [NotNull] IDocumentSource source)
         {
             if (indexer == null) throw new ArgumentNullException("indexer");
@@ -152,9 +165,8 @@ namespace Primitive.Text.Indexing
                             .Where(changes => changes.Count > 0)
                             .Select(changes => changes.Distinct().ToList())
                             .Do(changes => DocumentsChanged += changes.Count))
-                    .Select(files => files.ToObservable())
-                    .Concat()
                     .Do(_ => OnParsingStarted())
+                    .SelectMany(files => files)
                     .SelectMany(IndexDocument)
                     .Do(_ => OnParsingStarted())
                     .Select(d => Observable.FromAsync(() => Task.Run(() => Indexer.Index.Merge(d.Document, d.IndexWords))))
@@ -186,31 +198,21 @@ namespace Primitive.Text.Indexing
 
         private IObservable<IndexedDocument> IndexDocument(DocumentInfo documentInfo)
         {
-            var documentReader = Observable.Using(
-                () => documentInfo.Source.OpenDocument(documentInfo),
-                reader =>
-                    reader != null
-                        ? Indexer.StreamParser.ExtractWords(reader).Aggregate(
-                            Indexer.CreateEmptyWordSet(),
-                            (set, word) =>
-                            {
-                                set.Add(word);
-                                return set;
-                            })
-                        : Observable.Return(Indexer.CreateEmptyWordSet()))
-                    // consider file doesn't contain any words if access is denied
-                    .Catch((UnauthorizedAccessException e) => Observable.Return(Indexer.CreateEmptyWordSet()));
-
-            return RetryOn(documentReader, shouldRetry: e => e is IOException, retryTimes: 4, retryDelay: TimeSpan.FromSeconds(1))
-                .Select(words => new IndexedDocument(documentInfo, words));
-        }
-
-        private static IObservable<T> RetryOn<T>(/*this*/ IObservable<T> source, Func<Exception, bool> shouldRetry, int retryTimes, TimeSpan retryDelay)
-        {
-            return source.Catch(
-                (Exception e) => shouldRetry(e) && retryTimes > 0
-                    ? RetryOn(source, shouldRetry, retryTimes - 1, retryDelay).DelaySubscription(retryDelay)
-                    : Observable.Throw<T>(e));
+            return
+                DocumentSource.ExtractDocumentWords(documentInfo, Indexer.StreamParser)
+                    .Aggregate(Indexer.CreateEmptyWordSet(),
+                        (set, word) =>
+                        {
+                            set.Add(word);
+                            return set;
+                        }, 
+                        words => new IndexedDocument(documentInfo, words))
+                    .Catch((Exception e) =>
+                    {
+                        indexingErrors.OnNext(Tuple.Create(documentInfo, e));
+                        // consider there is no document to index if words can't be extracted from it.
+                        return Observable.Empty<IndexedDocument>();
+                    });
         }
 
 

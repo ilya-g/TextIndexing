@@ -50,7 +50,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Documents\Sources\AbstractDocumentSource.cs" />
+    <Compile Include="Documents\Sources\DocumentSourceBase.cs" />
     <Compile Include="Documents\Sources\DirectoryDocumentSource.cs" />
     <Compile Include="Documents\DocumentInfo.cs" />
     <Compile Include="Documents\Sources\FileSystemDocumentSource.cs" />

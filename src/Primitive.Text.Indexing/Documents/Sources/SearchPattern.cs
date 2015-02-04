@@ -30,7 +30,7 @@ namespace Primitive.Text.Documents.Sources
         private readonly Lazy<Regex> patternRegex; 
 
         /// <summary>
-        ///  Constructs new SearchPattern instance with the specified <paramref name="pattern"/> string
+        ///  Initializes a new instance of <see cref="SearchPattern"/> class with the specified <paramref name="pattern"/> string
         /// </summary>
         /// <param name="pattern">The search string to match against the names of files. This parameter can contain a combination of valid literal path and wildcard (* and ?) characters.</param>
         /// <seealso cref="DirectoryInfo.EnumerateFiles(string)"/>
@@ -80,11 +80,17 @@ namespace Primitive.Text.Documents.Sources
         /// </summary>
         public class TypeConverter : System.ComponentModel.TypeConverter
         {
+            /// <summary>
+            /// Returns whether this converter can convert an object of the given type to the type of this converter, using the specified context.
+            /// </summary>
             public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
             {
                 return (sourceType == typeof(string)) || base.CanConvertFrom(context, sourceType);
             }
 
+            /// <summary>
+            /// Converts the given object to the type of this converter, using the specified context and culture information.
+            /// </summary>
             public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
             {
                 if (value is string)

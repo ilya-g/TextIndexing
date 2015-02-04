@@ -25,6 +25,10 @@ namespace Primitive.Text.Documents
         /// </summary>
         public string Word { get { return word; } }
 
+
+        /// <summary>
+        ///  Explicit implementation of <see cref="IGrouping{TKey,TElement}.Key"/> property, returning the <see cref="Word"/>
+        /// </summary>
         string IGrouping<string, DocumentInfo>.Key { get { return word; } }
 
         /// <summary>
