@@ -16,7 +16,7 @@ namespace Primitive.Text.Documents.Sources
     /// </summary>
     /// <seealso cref="DirectoryInfo.EnumerateFiles(string)"/>
     [TypeConverter(typeof(SearchPattern.TypeConverter))]
-    public class SearchPattern
+    public sealed class SearchPattern
     {
 
         private static readonly char[] invalidSearchPatternChars;

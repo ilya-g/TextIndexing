@@ -9,7 +9,7 @@ namespace Primitive.Text.Parsers
     ///  Providers <see cref="ILineParser"/> implementation, that uses <see cref="Regex"/> class
     ///  to extract the individual words from a line of text
     /// </summary>
-    public class RegexLineParser : ILineParser
+    public sealed class RegexLineParser : ILineParser
     {
         /// <summary>
         ///  The default instance of <see cref="RegexLineParser"/> initialized with <c>\w+</c> pattern to match words

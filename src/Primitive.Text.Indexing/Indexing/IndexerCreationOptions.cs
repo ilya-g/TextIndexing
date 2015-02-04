@@ -10,7 +10,7 @@ namespace Primitive.Text.Indexing
     /// <summary>
     ///  Specifies the options to be used in <see cref="Indexer.Create(IndexerCreationOptions)" /> method.
     /// </summary>
-    public class IndexerCreationOptions
+    public sealed class IndexerCreationOptions
     {
         /// <summary>
         ///  Creates <see cref="IndexerCreationOptions"/> instance with all values set to their defaults

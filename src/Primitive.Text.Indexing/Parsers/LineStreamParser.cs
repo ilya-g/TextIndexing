@@ -15,7 +15,7 @@ namespace Primitive.Text.Parsers
     ///  Provides the <see cref="IStreamParser"/> implementation which reads the document content line by line
     ///  and parses each line with specified <see cref="ILineParser"/> instance.
     /// </summary>
-    public class LineStreamParser : IStreamParser
+    public sealed class LineStreamParser : IStreamParser
     {
         private readonly ILineParser lineParser;
 
