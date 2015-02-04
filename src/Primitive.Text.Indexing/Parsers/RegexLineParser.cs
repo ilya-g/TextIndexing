@@ -5,21 +5,36 @@ using System.Text.RegularExpressions;
 
 namespace Primitive.Text.Parsers
 {
+    /// <summary>
+    ///  Providers <see cref="ILineParser"/> implementation, that uses <see cref="Regex"/> class
+    ///  to extract the individual words from a line of text
+    /// </summary>
     public class RegexLineParser : ILineParser
     {
+        /// <summary>
+        ///  The default instance of <see cref="RegexLineParser"/> initialized with <c>\w+</c> pattern to match words
+        /// </summary>
         public static readonly RegexLineParser Default = new RegexLineParser(new Regex(@"\w+", RegexOptions.Compiled));
 
-        public RegexLineParser(string wordPattern) : this(new Regex(wordPattern))
-        {
-        }
-
+        /// <summary>
+        ///  Initializes a new <see cref="RegexLineParser"/> instance with the specified <paramref name="wordPattern"/>
+        /// </summary>
+        /// <param name="wordPattern">A <see cref="Regex"/> pattern to match words</param>
         public RegexLineParser(Regex wordPattern)
         {
             WordPattern = wordPattern;
         }
 
+        /// <summary>
+        ///  Gets the <see cref="Regex"/> pattern to match words
+        /// </summary>
         public Regex WordPattern { get; private set; }
 
+        /// <summary>
+        ///  Extracts words from a <paramref name="line"/>
+        /// </summary>
+        /// <param name="line">A line of content text to extract words from</param>
+        /// <returns>An enumerable sequence with extracted words</returns>
         public IEnumerable<string> ExtractWords(string line)
         {
             if (line == null) throw new ArgumentNullException("line");
