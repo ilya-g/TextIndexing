@@ -11,9 +11,11 @@ using Primitive.Text.Documents.Sources;
 
 namespace Primitive.Text.Indexing
 {
+#pragma warning disable 618 // obsolete usage
     [TestFixture(IndexLocking.NoLocking)]
     [TestFixture(IndexLocking.Exclusive)]
     [TestFixture(IndexLocking.ReadWrite)]
+#pragma warning restore 618
     public class IndexTests
     {
         private readonly IndexerCreationOptions indexCreationOptions;

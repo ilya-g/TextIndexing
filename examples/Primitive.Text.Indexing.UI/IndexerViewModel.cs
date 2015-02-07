@@ -29,7 +29,7 @@ namespace Primitive.Text.Indexing.UI
 
             var baseDirectory = MoveUpThroughHierarhy(new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory), 5).FullName;
 
-            Indexer = Indexer.Create(new IndexerCreationOptions() { IndexLocking = IndexLocking.NoLocking});
+            Indexer = Indexer.Create(new IndexerCreationOptions() { IndexLocking = IndexLocking.ReadWrite});
             Indexer.AddSource(new DirectoryDocumentSource(baseDirectory, "*.cs"), autoStartIndexing: false);
             Indexer.AddSource(new DirectoryDocumentSource(baseDirectory, "*.xml"), autoStartIndexing: false);
         }

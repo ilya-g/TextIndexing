@@ -77,7 +77,7 @@ namespace Primitive.Text.Indexing
                 throw new ArgumentException("StreamParser and LineParser cannot be specified simulaneosly", "options");
 
             var index = options.CreateIndex();
-            var parser = options.StreamParser ?? new LineStreamParser(options.LineParser ?? RegexLineParser.Default);
+            var parser = options.StreamParser ?? new LineStreamParser(options.LineParser ?? AlphaNumericWordsLineParser.Instance);
             return new Indexer(index, parser);
         }
 

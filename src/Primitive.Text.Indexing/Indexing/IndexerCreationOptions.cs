@@ -18,7 +18,7 @@ namespace Primitive.Text.Indexing
         public IndexerCreationOptions()
         {
             WordComparison = StringComparison.OrdinalIgnoreCase;
-            IndexLocking = IndexLocking.NoLocking;
+            IndexLocking = IndexLocking.ReadWrite;
         }
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace Primitive.Text.Indexing
         ///  Gets or sets the locking mode, defining which index implementation is to be used
         /// </summary>
         /// <remarks>
-        ///  Default value is <see cref="Indexing.IndexLocking.NoLocking"/>.
+        ///  Default value is <see cref="Indexing.IndexLocking.ReadWrite"/>.
         ///  See the <see cref="Indexing.IndexLocking"/> for detailed description of index locking modes.
         /// </remarks>
         public IndexLocking IndexLocking { get; set; }
@@ -45,7 +45,7 @@ namespace Primitive.Text.Indexing
         /// <remarks>
         ///  <para>Cannot be specified simultaneously with the <see cref="StreamParser"/>.</para>
         ///  <para>When the both <see cref="LineParser"/> and <see cref="StreamParser"/> are not specified, 
-        ///  <see cref="RegexLineParser.Default"/> value is used.</para>
+        ///  an instance of <see cref="AlphaNumericWordsLineParser"/> is used.</para>
         /// </remarks>
         public ILineParser LineParser { get; set; }
 
@@ -72,10 +72,12 @@ namespace Primitive.Text.Indexing
             {
                 case IndexLocking.NoLocking:
                     return new ImmutableIndex(WordComparison);
+#pragma warning disable 618 // obsolete usage
                 case IndexLocking.Exclusive:
+#pragma warning restore 618
                     return new LockingIndex(WordComparison, new LockingStrategy.Exclusive());
                 case IndexLocking.ReadWrite:
-                    return new LockingIndex(WordComparison, new LockingStrategy.ReadWrite());
+                    return new LockingIndex(WordComparison, new LockingStrategy.PrioritizedReadWrite());
                 default:
                     throw new ArgumentOutOfRangeException(string.Format("IndexLocking option value '{0}' is out of range", IndexLocking), "IndexLocking");
             }
@@ -87,12 +89,13 @@ namespace Primitive.Text.Indexing
     ///  Specifies which <see cref="IIndex"/> implementation and locking strategy to be used.
     /// </summary>
     /// <remarks>
-    ///  Default value is <see cref="NoLocking"/>, 
+    ///  Default value is <see cref="ReadWrite"/>, 
     /// </remarks>
     public enum IndexLocking
     {
         /// <summary>
-        ///  Slow modification operations, instantaneous read operations: both querying and snapshots
+        ///  No-locking reads, exclusive writes.
+        ///  Slow modification operations, instantaneous read operations: both querying and snapshots.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -107,23 +110,28 @@ namespace Primitive.Text.Indexing
         NoLocking,
 
         /// <summary>
-        ///  Fastest modification operations, blocking read, slow snapshots
+        ///  Shared reads, exclusive writes.
+        ///  Fastest modification operations, read operations don't block each other and have priority over writes, slow snapshots.
+        /// </summary>
+        /// <remarks>
+        ///  Uses exclusive locking for modification operations and shared locking for read operations.
+        ///  When there are no writes, queries are as fast as in <see cref="NoLocking"/> mode,
+        ///  snapshots is as slow as in <see cref="Exclusive"/> and merges are a little bit faster than
+        ///  in <see cref="Exclusive"/>.
+        /// </remarks>
+        ReadWrite,
+
+
+        /// <summary>
+        ///  Exclusive both reads and writes.
+        ///  Fast modification operations, blocking reads, slow snapshots.
         /// </summary>
         /// <remarks>
         /// <para>Uses exclusive locking for both read and modification operations.</para>
         /// <para>Can be used when index queries are relatively seldom compared to index merges</para>
         /// </remarks>
+        [Obsolete("Use ReadWrite instead for better perfomance")]
         Exclusive,
         
-        /// <summary>
-        ///  Fast modification operations, read operations don't block each other, slow snapshots
-        /// </summary>
-        /// <remarks>
-        ///  Uses exclusive locking for modification operations and shared locking for read operations.
-        ///  When there are no writes, queries are as fast as in <see cref="NoLocking"/> mode,
-        ///  snapshots is as slow as in <see cref="Exclusive"/> and merges are a little bit slower than
-        ///  in <see cref="Exclusive"/>, but faster than in <see cref="NoLocking"/> mode.
-        /// </remarks>
-        ReadWrite
     }
 }
