@@ -129,7 +129,9 @@ namespace Primitive.Text.Indexing
                     else if (compareResult > 0)
                     {
                         var item = oldIndex[idxTarget];
-                        newIndex.AddSorted(item.Key, item.Value.Remove(document));
+                        var newValue = item.Value.Remove(document);
+                        if (newValue.Count > 0)
+                            newIndex.AddSorted(item.Key, newValue);
                         idxTarget += 1;
                     }
                     else

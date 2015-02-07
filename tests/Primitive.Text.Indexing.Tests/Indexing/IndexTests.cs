@@ -56,6 +56,7 @@ namespace Primitive.Text.Indexing
             {
                 Assert.That(index.GetExactWord(word), Is.Empty);
             }
+            Assert.That(index.GetIndexedWords(), Is.Empty);
         }
 
         [Test]
@@ -72,6 +73,9 @@ namespace Primitive.Text.Indexing
             {
                 Assert.That(documents.Where(documentPredicate), Is.Empty);
             }
+
+            index.RemoveDocumentsMatching(_ => true);
+            Assert.That(index.GetIndexedWords(), Is.Empty);
         }
 
         [Test]
@@ -113,7 +117,7 @@ namespace Primitive.Text.Indexing
 
 
 
-        [Test]
+        [Test, Category("Performance")]
         public void SequentialPerformance()
         {
             var documents = GenerateDocuments(distinctDocumentsCount: 500, distinctWordsCount: 200);
@@ -128,7 +132,23 @@ namespace Primitive.Text.Indexing
             MeasureUntil(TimeSpan.FromSeconds(1), "Query", () => index.GetExactWord(words[rng.Next(words.Count)]));
         }
 
-        [Test]
+        [Test, Category("Performance")]
+        public void PopulationPatternsPerformance()
+        {
+            const int documentCount = 100;
+            const int wordCount = 5000;
+            Console.WriteLine("No changes");
+            PopulateIndex(indexCreationOptions.CreateIndex(), GenerateDocumentChangePattern(documentCount, wordCount, 1));
+
+            Console.WriteLine("Change all words every time");
+            PopulateIndex(indexCreationOptions.CreateIndex(), GenerateDocumentChangePattern(documentCount, wordCount, 0));
+
+            Console.WriteLine("Change 50% words every time");
+            PopulateIndex(indexCreationOptions.CreateIndex(), GenerateDocumentChangePattern(documentCount, wordCount, 0.5));
+
+        }
+
+        [Test, Category("Performance")]
         public void ParallelPopulateQuerySnapshotPerformance()
         {
             int maxDocuments = 1000;
@@ -214,6 +234,21 @@ namespace Primitive.Text.Indexing
                         );
                 }).ToList();
         }
+
+        private static List<IndexedDocument> GenerateDocumentChangePattern(int count, int totalWords, double fixedWordsPart)
+        {
+            var document = new DocumentInfo("single", TestDocumentSource.Instance);
+            var fixedWords = Enumerable.Range(1, (int)(totalWords*fixedWordsPart)).Select(i => "Fixed_" + i).ToList();
+            var wordSets = Enumerable.Range(0, 2).Select(n =>
+                new HashSet<string>(
+                    fixedWords.Concat(
+                        Enumerable.Range(1, (int) (totalWords*(1 - fixedWordsPart))).Select(i => string.Format("Changing_{1}_{0}", n, i))
+                    ))
+                ).ToList();
+
+
+            return Enumerable.Range(1, count).Select(i => new IndexedDocument(document, wordSets[i%2])).ToList();
+        } 
 
         private static void PopulateIndex(IIndex index, ICollection<IndexedDocument> documents)
         {

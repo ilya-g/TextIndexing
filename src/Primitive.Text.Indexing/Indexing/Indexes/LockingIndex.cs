@@ -123,7 +123,10 @@ namespace Primitive.Text.Indexing
                     {
                         var documents = wordIndex.Values[idxTarget];
                         documents.Remove(document);
-                        idxTarget += 1;
+                        if (documents.Count > 0)
+                            idxTarget += 1;
+                        else
+                            wordIndex.RemoveAt(idxTarget);
                     }
                     else
                     {
@@ -140,16 +143,26 @@ namespace Primitive.Text.Indexing
         {
             using (locking.InWriteLock())
             {
-                foreach (var item in wordIndex)
+                List<DocumentInfo> valuesToRemove = null;
+                for (int i = 0; i < wordIndex.Count; i++)
                 {
-                    List<DocumentInfo> valuesToRemove = null;
-                    foreach (var document in item.Value)
+                    var value = wordIndex.Values[i];
+                    foreach (var document in value)
                     {
                         if (predicate(document))
                             (valuesToRemove ?? (valuesToRemove = new List<DocumentInfo>())).Add(document);
                     }
-                    if (valuesToRemove != null)
-                        item.Value.ExceptWith(valuesToRemove);
+                    if (valuesToRemove != null && valuesToRemove.Count > 0)
+                    {
+                        if (valuesToRemove.Count != value.Count)
+                            value.ExceptWith(valuesToRemove);
+                        else
+                        {
+                            wordIndex.RemoveAt(i);
+                            i -= 1;
+                        }
+                        valuesToRemove.Clear();
+                    }
                 }
             }
         }

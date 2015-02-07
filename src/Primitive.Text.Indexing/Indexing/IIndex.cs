@@ -70,7 +70,7 @@ namespace Primitive.Text.Indexing
         ///  Gets all words that were placed in the index
         /// </summary>
         /// <returns>
-        ///  Some words may have no associated documents after the index is updated
+        ///  Words without associated documents should not be returned
         /// </returns>
         IList<string> GetIndexedWords();
 
