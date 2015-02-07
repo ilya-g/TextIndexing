@@ -18,16 +18,24 @@ namespace Primitive.Text.Indexing
     {
 
         private readonly object lockIndex = new object();
-        private volatile InternalSortedList<string, IImmutableSet<DocumentInfo>> wordIndex;
+
+        private volatile State state; 
 
         private readonly StringComparisonComparer wordComparer;
 
         public ImmutableIndex(StringComparison wordComparison)
         {
             this.wordComparer = new StringComparisonComparer(wordComparison);
-            this.wordIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(wordComparer);
+            this.state = new State(
+                new InternalSortedList<string, IImmutableSet<DocumentInfo>>(wordComparer),
+                ImmutableHashSet<DocumentInfo>.Empty);
         }
 
+        private ImmutableIndex(InternalSortedList<string, IImmutableSet<DocumentInfo>> wordIndex, IImmutableSet<DocumentInfo> allDocuments)
+        {
+            this.wordComparer = (StringComparisonComparer) wordIndex.KeyComparer;
+            this.state = new State(wordIndex, allDocuments);
+        }
         /// <summary>
         ///  String comparison type used to compare words being indexed
         /// </summary>
@@ -36,7 +44,7 @@ namespace Primitive.Text.Indexing
         public WordDocuments GetExactWord(string word)
         {
             IImmutableSet<DocumentInfo> documents;
-            if (!wordIndex.TryGetValue(word, out documents))
+            if (!state.wordIndex.TryGetValue(word, out documents))
                 return new WordDocuments(word, ImmutableArray<DocumentInfo>.Empty);
             return new WordDocuments(word, documents);
         }
@@ -45,7 +53,7 @@ namespace Primitive.Text.Indexing
         {
             if (wordBeginning == null) throw new ArgumentNullException("wordBeginning");
 
-            var wordIndex = this.wordIndex;
+            var wordIndex = state.wordIndex;
             var startingIndex = wordIndex.IndexOfKey(wordBeginning);
             if (startingIndex < 0)
                 startingIndex = ~startingIndex;
@@ -65,7 +73,7 @@ namespace Primitive.Text.Indexing
             if (wordPredicate == null) throw new ArgumentNullException("wordPredicate");
 
             return (
-                from item in wordIndex
+                from item in state.wordIndex
                 where wordPredicate(item.Key)
                 select new WordDocuments(item.Key, item.Value)
                 ).ToList();
@@ -73,7 +81,7 @@ namespace Primitive.Text.Indexing
 
         public IList<string> GetIndexedWords()
         {
-            var wordIndex = this.wordIndex;
+            var wordIndex = state.wordIndex;
             var result = new List<string>(wordIndex.Count);
             result.AddRange(wordIndex.Keys);
             return result;
@@ -81,10 +89,8 @@ namespace Primitive.Text.Indexing
 
         public IIndex Snapshot()
         {
-            return new ImmutableIndex(this.WordComparison)
-            {
-                wordIndex = this.wordIndex
-            };
+            var state = this.state;
+            return new ImmutableIndex(state.wordIndex, state.documents);
         }
 
         public void Merge(DocumentInfo document, IEnumerable<string> indexWords)
@@ -93,11 +99,17 @@ namespace Primitive.Text.Indexing
             if (indexWords == null) throw new ArgumentNullException("indexWords");
 
             var sourceWords = new SortedSet<string>(indexWords, wordComparer).ToList();
+            bool hasWords = sourceWords.Any();
             var singleDocumentList = ImmutableHashSet.Create(document);
             // Merge join sorted word list with wordIndex list
             lock (lockIndex)
             {
-                var oldIndex = this.wordIndex;
+                var oldDocuments = state.documents;
+                var newDocuments = hasWords ? oldDocuments.Add(document) : oldDocuments.Remove(document);
+                bool isNewDocument = hasWords == (newDocuments != oldDocuments);
+                if (isNewDocument && !hasWords) return;
+
+                var oldIndex = state.wordIndex;
                 var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count + sourceWords.Count);
                 int idxSource = 0;
                 int idxTarget = 0;
@@ -129,9 +141,16 @@ namespace Primitive.Text.Indexing
                     else if (compareResult > 0)
                     {
                         var item = oldIndex[idxTarget];
-                        var newValue = item.Value.Remove(document);
-                        if (newValue.Count > 0)
-                            newIndex.AddSorted(item.Key, newValue);
+                        if (!isNewDocument)
+                        {
+                            var newValue = item.Value.Remove(document);
+                            if (newValue.Count > 0)
+                                newIndex.AddSorted(item.Key, newValue);
+                        }
+                        else
+                        {
+                            newIndex.AddSorted(item.Key, item.Value);
+                        }
                         idxTarget += 1;
                     }
                     else
@@ -142,7 +161,7 @@ namespace Primitive.Text.Indexing
                         idxTarget += 1;
                     }
                 }
-                this.wordIndex = newIndex;
+                this.state = new State(newIndex, newDocuments);
             }
         }
 
@@ -150,7 +169,12 @@ namespace Primitive.Text.Indexing
         {
             lock (lockIndex)
             {
-                var oldIndex = this.wordIndex;
+                var oldDocuments = state.documents;
+                var newDocuments = oldDocuments.Except(oldDocuments.Where(predicate));
+                if (newDocuments == oldDocuments)
+                    return;
+  
+                var oldIndex = state.wordIndex;
                 var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count);
                 foreach (var item in oldIndex)
                 {
@@ -158,8 +182,22 @@ namespace Primitive.Text.Indexing
                     if (newValue.Count > 0)
                         newIndex.AddSorted(item.Key, newValue);
                 }
-                this.wordIndex = newIndex;
+                this.state = new State(newIndex, newDocuments);
             }
         }
+
+
+        private class State
+        {
+            public State(InternalSortedList<string, IImmutableSet<DocumentInfo>> wordIndex, IImmutableSet<DocumentInfo> allDocuments)
+            {
+                this.wordIndex = wordIndex;
+                this.documents = allDocuments;
+            }
+
+            public readonly InternalSortedList<string, IImmutableSet<DocumentInfo>> wordIndex;
+            public readonly IImmutableSet<DocumentInfo> documents;
+        }
+
     }
 }

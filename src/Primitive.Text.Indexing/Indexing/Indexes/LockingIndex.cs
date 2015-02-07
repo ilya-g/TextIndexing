@@ -16,6 +16,7 @@ namespace Primitive.Text.Indexing
     internal sealed class LockingIndex : IIndex
     {
         private readonly SortedList<string, ISet<DocumentInfo>> wordIndex;
+        private readonly ISet<DocumentInfo> allDocuments;
         private readonly StringComparisonComparer wordComparer;
         private readonly LockingStrategy locking;
 
@@ -25,6 +26,7 @@ namespace Primitive.Text.Indexing
 
             this.wordComparer = new StringComparisonComparer(wordComparison);
             this.wordIndex = new SortedList<string, ISet<DocumentInfo>>(wordComparer);
+            this.allDocuments = new HashSet<DocumentInfo>();
             this.locking = locking;
         }
 
@@ -71,9 +73,10 @@ namespace Primitive.Text.Indexing
 
         public IIndex Snapshot()
         {
-            var snapshot = new LockingIndex(this.WordComparison, this.locking);
+            var snapshot = new LockingIndex(this.WordComparison, this.locking); // ISSUE: Do not share locking
             using (locking.InReadLock())
             {
+                snapshot.allDocuments.UnionWith(this.allDocuments);
                 foreach (var item in wordIndex)
                 {
                     snapshot.wordIndex.Add(item.Key, new HashSet<DocumentInfo>(item.Value));
@@ -88,10 +91,14 @@ namespace Primitive.Text.Indexing
             if (indexWords == null) throw new ArgumentNullException("indexWords");
 
             var sourceWords = new SortedSet<string>(indexWords, wordComparer).ToList();
+            bool hasWords = sourceWords.Any();
 
             // Merge join sorted word list with wordIndex list
             using (locking.InWriteLock())
             {
+                bool isNewDocument = hasWords ? allDocuments.Add(document) : !allDocuments.Remove(document);
+                if (isNewDocument && !hasWords) return;
+
                 int idxSource = 0;
                 int idxTarget = 0;
 
@@ -117,24 +124,28 @@ namespace Primitive.Text.Indexing
                         // add and include
                         wordIndex.Add(sourceWords[idxSource], new HashSet<DocumentInfo> { document });
                         idxSource += 1;
-                        idxTarget += 1;
                     }
                     else if (compareResult > 0)
                     {
-                        var documents = wordIndex.Values[idxTarget];
-                        documents.Remove(document);
-                        if (documents.Count > 0)
-                            idxTarget += 1;
-                        else
-                            wordIndex.RemoveAt(idxTarget);
+                        if (!isNewDocument)
+                        {
+                            var documents = wordIndex.Values[idxTarget];
+                            documents.Remove(document);
+                            if (documents.Count <= 0)
+                            {
+                                wordIndex.RemoveAt(idxTarget);
+                                idxTarget -= 1;
+                            }
+                        }
                     }
                     else
                     {
                         var documents = wordIndex.Values[idxTarget];
                         documents.Add(document);
                         idxSource += 1;
-                        idxTarget += 1;
                     }
+
+                    idxTarget += 1;
                 }
             }
         }
@@ -143,24 +154,28 @@ namespace Primitive.Text.Indexing
         {
             using (locking.InWriteLock())
             {
-                List<DocumentInfo> valuesToRemove = null;
-                for (int i = 0; i < wordIndex.Count; i++)
+                var valuesToRemove = allDocuments.Where(predicate).ToList();
+                if (!valuesToRemove.Any())
+                    return;
+                allDocuments.ExceptWith(valuesToRemove);
+                valuesToRemove = new List<DocumentInfo>();
+
+                for (int i = wordIndex.Count - 1; i >= 0; i--)
                 {
                     var value = wordIndex.Values[i];
+
                     foreach (var document in value)
                     {
                         if (predicate(document))
-                            (valuesToRemove ?? (valuesToRemove = new List<DocumentInfo>())).Add(document);
+                            valuesToRemove.Add(document);
                     }
-                    if (valuesToRemove != null && valuesToRemove.Count > 0)
+                    if (valuesToRemove.Count > 0)
                     {
                         if (valuesToRemove.Count != value.Count)
                             value.ExceptWith(valuesToRemove);
                         else
-                        {
                             wordIndex.RemoveAt(i);
-                            i -= 1;
-                        }
+
                         valuesToRemove.Clear();
                     }
                 }
