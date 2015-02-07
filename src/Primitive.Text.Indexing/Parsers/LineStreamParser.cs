@@ -26,8 +26,25 @@ namespace Primitive.Text.Parsers
         public LineStreamParser(ILineParser lineParser)
         {
             this.lineParser = lineParser;
+            UseAsync = false;
         }
 
+        /// <summary>
+        ///  Gets the inner <see cref="ILineParser"/> instance, used to extract words from each read line.
+        /// </summary>
+        public ILineParser LineParser { get { return lineParser; } }
+
+        /// <summary>
+        ///  Gets or sets flag, indicating whether to use asynchronous stream reader.
+        /// </summary>
+        /// <value>Default value is false</value>
+        /// <remarks>
+        ///  Reading a stream asynchronously can prevent threads congestion, when there are a plenty of simultaneos
+        ///  <see cref="LineStreamParser"/>s working.
+        ///  May be a quite slower than synchonous reading, but this is often unnoticeable, compared to the time spent in
+        ///  <see cref="LineParser"/>.
+        /// </remarks>
+        public bool UseAsync { get; set; }
 
         /// <summary>
         ///  Extracts words from a document content read with <paramref name="sourceReader"/> and returns them as an observable sequence
@@ -42,17 +59,41 @@ namespace Primitive.Text.Parsers
         {
             if (sourceReader == null) throw new ArgumentNullException("sourceReader");
 
-            return Observable.Create<string>(obs =>
-            {
-                var scheduler = Scheduler.Default;
-                var subscription = new SingleAssignmentDisposable();
-                subscription.Disposable = scheduler.Schedule(() =>
+            if (!UseAsync)
+                return Observable.Create<string>(obs =>
+                {
+                    var scheduler = Scheduler.Default;
+                    var subscription = new SingleAssignmentDisposable();
+                    subscription.Disposable = scheduler.Schedule(() =>
+                    {
+                        try
+                        {
+                            while (!subscription.IsDisposed)
+                            {
+                                var line = sourceReader.ReadLine();
+                                if (line == null)
+                                    break;
+                                foreach (var word in lineParser.ExtractWords(line))
+                                    obs.OnNext(word);
+                            }
+                            obs.OnCompleted();
+                        }
+                        catch (Exception e)
+                        {
+                            obs.OnError(e);
+                        }
+                    });
+                    return subscription;
+                });
+            else
+            // async version is much more slower
+                return Observable.Create<string>(async (obs, cancel) =>
                 {
                     try
                     {
-                        while (!subscription.IsDisposed)
+                        while (!cancel.IsCancellationRequested)
                         {
-                            var line = sourceReader.ReadLine();
+                            var line = await sourceReader.ReadLineAsync().ConfigureAwait(false);
                             if (line == null)
                                 break;
                             foreach (var word in lineParser.ExtractWords(line))
@@ -64,30 +105,7 @@ namespace Primitive.Text.Parsers
                     {
                         obs.OnError(e);
                     }
-                });
-                return subscription;
-            });
-
-            // async version is much more slower
-            //return Observable.Create<string>(async (obs, cancel) =>
-            //{
-            //    try
-            //    {
-            //        while (!cancel.IsCancellationRequested)
-            //        {
-            //            var line = await sourceReader.ReadLineAsync().ConfigureAwait(false);
-            //            if (line == null)
-            //                break;
-            //            foreach (var word in innerParser.ExtractWords(line))
-            //                obs.OnNext(word);
-            //        }
-            //        obs.OnCompleted();
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        obs.OnError(e);
-            //    }
-            //}).SubscribeOn(Scheduler.Default);
+                }).SubscribeOn(Scheduler.Default);
         }
     }
 

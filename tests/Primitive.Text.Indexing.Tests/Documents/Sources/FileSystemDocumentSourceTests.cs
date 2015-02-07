@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using NUnit.Framework;
+using Primitive.Text.Content;
 
 namespace Primitive.Text.Documents.Sources
 {
@@ -16,23 +17,6 @@ namespace Primitive.Text.Documents.Sources
             return newTempDirectoryPath;
         }
 
-        protected static string GetContentPath()
-        {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Content");
-        }
-
-        protected static IList<string> CopyContentFilesTo(string pattern, string destinationPath)
-        {
-            var results = new List<string>();
-            string sourcePath = GetContentPath();
-            foreach (var fileName in Directory.EnumerateFiles(sourcePath, pattern, SearchOption.AllDirectories))
-            {
-                string destinationFile = fileName.Replace(sourcePath, destinationPath);
-                File.Copy(fileName, Path.Combine(destinationPath, destinationFile));
-                results.Add(destinationFile);
-            }
-            return results;
-        }
 
         protected static void InNewTempDirectory(Action<string> testAction)
         {
@@ -46,6 +30,11 @@ namespace Primitive.Text.Documents.Sources
             {
                 Directory.Delete(path, recursive: true);
             }
+        }
+
+        protected static IList<string> CopyContentFilesTo(string pattern, string path)
+        {
+            return TestContentManager.CopyContentFilesTo(pattern, path);
         }
 
 
