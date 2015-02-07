@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 namespace Primitive.Text.Parsers
 {
     /// <summary>
-    ///  Providers <see cref="ILineParser"/> implementation, that uses <see cref="Regex"/> class
+    ///  Provides <see cref="ILineParser"/> implementation, that uses <see cref="Regex"/> pattern
     ///  to extract the individual words from a line of text
     /// </summary>
     public sealed class RegexLineParser : ILineParser

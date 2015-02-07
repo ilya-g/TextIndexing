@@ -68,10 +68,13 @@
     <Compile Include="Indexing\Internal\LockingStrategy.cs" />
     <Compile Include="Indexing\Internal\StringComparisonComparer.cs" />
     <Compile Include="Documents\WordDocuments.cs" />
+    <Compile Include="Parsers\AlphaNumericWordsLineParser.cs" />
+    <Compile Include="Parsers\PunctuationSplittingLineParser.cs" />
     <Compile Include="Parsers\ILineParser.cs" />
     <Compile Include="Parsers\IStreamParser.cs" />
     <Compile Include="Parsers\RegexLineParser.cs" />
     <Compile Include="Parsers\LineStreamParser.cs" />
+    <Compile Include="Parsers\WordCharacterParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
