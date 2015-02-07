@@ -20,11 +20,13 @@ namespace Primitive.Text.Documents.Sources
     {
 
         private static readonly char[] invalidSearchPatternChars;
+        static bool IsNotWildcardChar(char c) { return c != '?' && c != '*'; }
 
         static SearchPattern()
         {
-            invalidSearchPatternChars = Path.GetInvalidFileNameChars().Where(c => c != '?' & c != '*').ToArray();
+            invalidSearchPatternChars = Path.GetInvalidFileNameChars().Where(IsNotWildcardChar).ToArray();
         }
+
 
         private readonly string pattern;
         private readonly Lazy<Regex> patternRegex; 
