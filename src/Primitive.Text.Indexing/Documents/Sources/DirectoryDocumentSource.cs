@@ -92,7 +92,7 @@ namespace Primitive.Text.Documents.Sources
             return new[] {e.OldFullPath, e.FullPath}.Where(SearchPattern.IsMatch).Select(DocumentFromPath);
         }
 
-        private static IEnumerable<FileInfo> SafeEnumerateAllFiles(DirectoryInfo directory, string seachPattern)
+        private static IEnumerable<FileInfo> SafeEnumerateAllFiles([NotNull] DirectoryInfo directory, string seachPattern)
         {
             return EnumerateIgnoreException(
                 () => Enumerable.Concat(
@@ -101,7 +101,7 @@ namespace Primitive.Text.Documents.Sources
                 shouldIgnore: e => e is UnauthorizedAccessException);
         }
 
-        private static IEnumerable<T> EnumerateIgnoreException<T>(Func<IEnumerable<T>> sourceProvider, Func<Exception, bool> shouldIgnore)
+        private static IEnumerable<T> EnumerateIgnoreException<T>([NotNull] Func<IEnumerable<T>> sourceProvider, [NotNull] Func<Exception, bool> shouldIgnore)
         {
             IEnumerator<T> enumerator;
             try

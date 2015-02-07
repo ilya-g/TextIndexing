@@ -36,8 +36,8 @@ namespace Primitive.Text.Documents.Sources
         /// <param name="streamParser">The parser to be used to extract words from the document stream</param>
         /// <returns>
         /// Returns an observable sequence of document words, that being subscribed to
-        /// pushes all words from the document and then completes. This sequence also complete with fail, if there was
-        /// an error opening or reading the document.
+        /// pushes all words from the document and then completes. 
+        /// This sequence can also complete with fail, if there was  an error opening or reading the document.
         /// </returns>
         IObservable<string> ExtractDocumentWords([NotNull] DocumentInfo document, [NotNull] IStreamParser streamParser);
     }

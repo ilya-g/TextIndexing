@@ -74,7 +74,7 @@ namespace Primitive.Text.Indexing
         {
             if (options == null) throw new ArgumentNullException("options");
             if (options.StreamParser != null && options.LineParser != null)
-                throw new ArgumentException("StreamLexer and LineLexer cannot be specified simulaneosly", "options");
+                throw new ArgumentException("StreamParser and LineParser cannot be specified simulaneosly", "options");
 
             var index = options.CreateIndex();
             var parser = options.StreamParser ?? new LineStreamParser(options.LineParser ?? RegexLineParser.Default);
