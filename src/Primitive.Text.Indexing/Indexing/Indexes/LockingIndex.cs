@@ -71,9 +71,9 @@ namespace Primitive.Text.Indexing
                 return wordIndex.Keys.ToList();
         }
 
-        public IIndex Snapshot()
+        public IReadOnlyIndex Snapshot()
         {
-            var snapshot = new LockingIndex(this.WordComparison, this.locking); // ISSUE: Do not share locking
+            var snapshot = new LockingIndex(this.WordComparison, new LockingStrategy.SnapshotLocking());
             using (locking.InReadLock())
             {
                 snapshot.allDocuments.UnionWith(this.allDocuments);

@@ -90,6 +90,14 @@ namespace Primitive.Text.Indexing.Internal
             }
         }
 
+        public sealed class SnapshotLocking : LockingStrategy
+        {
+            protected override void EnterReadLock() {}
+            protected override void ExitReadLock() {}
+            protected override void EnterWriteLock() { throw new NotSupportedException("This locking strategy don't support write operations"); }
+            protected override void ExitWriteLock() { throw new NotSupportedException("This locking strategy don't support write operations"); }
+        }
+
         public struct ReadLock : IDisposable
         {
             private readonly LockingStrategy locking;

@@ -10,15 +10,9 @@ namespace Primitive.Text.Indexing
     /// <summary>
     ///  Represents an index data structure to store one-way relationships 
     ///  between index words and documents, containing that words.
-    ///  Provides methods to get documents by index words and to merge index words of new documents to this index
+    ///  Provides methods to get documents by index words.
     /// </summary>
-    /// <threadsafety instance="yes" />
-    /// <remarks>
-    ///  Note to implementors: instances of this interface should be thread-safe, providing the consistent state
-    ///  to the read operations, even if the write operations, such as <see cref="Merge"/> or <see cref="RemoveDocumentsMatching"/> 
-    ///  are in progress.
-    /// </remarks>
-    public interface IIndex
+    public interface IReadOnlyIndex
     {
         /// <summary>
         ///  String comparison type used to compare words being indexed
@@ -73,16 +67,33 @@ namespace Primitive.Text.Indexing
         ///  Words without associated documents should not be returned
         /// </returns>
         IList<string> GetIndexedWords();
+    }
 
+
+
+
+    /// <summary>
+    ///  Represents an index data structure to store one-way relationships 
+    ///  between index words and documents, containing that words.
+    ///  Extends <see cref="IReadOnlyIndex"/> with methods to merge index words of new documents to this index
+    /// </summary>
+    /// <threadsafety instance="yes" />
+    /// <remarks>
+    ///  Note to implementors: instances of this interface should be thread-safe, providing the consistent state
+    ///  to the read operations, even if the write operations, such as <see cref="Merge"/> or <see cref="RemoveDocumentsMatching"/> 
+    ///  are in progress.
+    /// </remarks>
+    public interface IIndex : IReadOnlyIndex
+    {
         /// <summary>
         ///  Creates the copy of this index, that will remain unchanged even if this instace is changed later.
         /// </summary>
-        /// <returns><see cref="IIndex"/> instance that holds the frozen snapshot of this index</returns>
+        /// <returns><see cref="IReadOnlyIndex"/> instance that holds the frozen snapshot of this index</returns>
         /// <remarks>
         /// Snapshot of index can be used to make several requests, requiring the consistent state that do not changes 
         /// during the serie of that requests
         /// </remarks>
-        IIndex Snapshot();
+        IReadOnlyIndex Snapshot();
 
         /// <summary>
         ///  Merges document word index into this index

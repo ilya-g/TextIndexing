@@ -67,6 +67,8 @@ namespace Primitive.Text.Indexing.Internal
 
         public void Add(TKey key, TValue value)
         {
+            if (TryAddSorted(key, value))
+                return;
             var index = IndexOfKey(key);
             if (index >= 0)
                 throw new ArgumentException(string.Format("Key '{0}' is already added", key), "key");
@@ -74,18 +76,29 @@ namespace Primitive.Text.Indexing.Internal
             keys.Insert(index, key);
             values.Insert(index, value);
         }
+
         public void AddSorted(TKey key, TValue value)
         {
 #if DEBUG
+            if (!TryAddSorted(key, value))
+                throw new ArgumentException("New key value must be stricty greater than the greatest key in the list", "key");
+#else
+            keys.Add(key);
+            values.Add(value);
+#endif
+        }
+
+        private bool TryAddSorted(TKey key, TValue value)
+        {
             if (keys.Count > 0)
             {
                 var lastKey = keys.Last();
                 if (KeyComparer.Compare(key, lastKey) <= 0)
-                    throw new ArgumentException("New key value must be stricty greater than the greatest key in the list", "key");
+                    return false;
             }
-#endif
             keys.Add(key);
             values.Add(value);
+            return true;
         }
 
         public IEnumerable<TKey> Keys {get { return keys; }} 

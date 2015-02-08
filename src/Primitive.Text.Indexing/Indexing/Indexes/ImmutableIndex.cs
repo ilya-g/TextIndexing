@@ -3,13 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Indexing.Internal;
 
 namespace Primitive.Text.Indexing
 {
-
     /// <summary>
     ///  <see cref="IIndex"/> implementation, that uses immutable structures to provide non-blocking query
     ///  and zero-cost snapshot operations.
@@ -19,7 +17,7 @@ namespace Primitive.Text.Indexing
 
         private readonly object lockIndex = new object();
 
-        private volatile State state; 
+        private volatile State state;
 
         private readonly StringComparisonComparer wordComparer;
 
@@ -33,7 +31,7 @@ namespace Primitive.Text.Indexing
 
         private ImmutableIndex(InternalSortedList<string, IImmutableSet<DocumentInfo>> wordIndex, IImmutableSet<DocumentInfo> allDocuments)
         {
-            this.wordComparer = (StringComparisonComparer) wordIndex.KeyComparer;
+            this.wordComparer = (StringComparisonComparer)wordIndex.KeyComparer;
             this.state = new State(wordIndex, allDocuments);
         }
         /// <summary>
@@ -87,7 +85,7 @@ namespace Primitive.Text.Indexing
             return result;
         }
 
-        public IIndex Snapshot()
+        public IReadOnlyIndex Snapshot()
         {
             var state = this.state;
             return new ImmutableIndex(state.wordIndex, state.documents);
@@ -173,7 +171,7 @@ namespace Primitive.Text.Indexing
                 var newDocuments = oldDocuments.Except(oldDocuments.Where(predicate));
                 if (newDocuments == oldDocuments)
                     return;
-  
+
                 var oldIndex = state.wordIndex;
                 var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count);
                 foreach (var item in oldIndex)

@@ -93,7 +93,7 @@ namespace Primitive.Text.Indexing.UI
             QueryResults = resultDocumentSet.OrderBy(d => d.Id).ToList();
         }
 
-        private static IEnumerable<DocumentInfo> GetTermDocuments(IIndex index, string term)
+        private static IEnumerable<DocumentInfo> GetTermDocuments(IReadOnlyIndex index, string term)
         {
             if (term.EndsWith("*"))
                 return index.GetWordsStartWith(term.TrimEnd('*')).SelectMany(wordDocuments => wordDocuments);
