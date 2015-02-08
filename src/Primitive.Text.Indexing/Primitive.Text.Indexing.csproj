@@ -56,7 +56,7 @@
     <Compile Include="Documents\Sources\FileSystemDocumentSource.cs" />
     <Compile Include="Documents\Sources\IDocumentSource.cs" />
     <Compile Include="Documents\IndexedDocument.cs" />
-    <Compile Include="Indexing\SourceIndexingAgent.cs" />
+    <Compile Include="Indexing\Indexer.cs" />
     <Compile Include="Documents\Sources\SearchPattern.cs" />
     <Compile Include="Documents\Sources\SingleFileDocumentSource.cs" />
     <Compile Include="Indexing\IIndex.cs" />

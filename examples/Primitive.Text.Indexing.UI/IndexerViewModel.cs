@@ -24,7 +24,7 @@ namespace Primitive.Text.Indexing.UI
         public IndexerViewModel()
         {
             DefaultSearchPattern = new SearchPattern("*.txt");
-            RemoveDocumentSourceCommand = new DelegateCommand<SourceIndexingAgent>(RemoveDocumentSource);
+            RemoveDocumentSourceCommand = new DelegateCommand<Indexer>(RemoveDocumentSource);
             SearchCommand = new DelegateCommand(ExecuteQuery);
 
             var baseDirectory = MoveUpThroughHierarhy(new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory), 5).FullName;
@@ -37,7 +37,7 @@ namespace Primitive.Text.Indexing.UI
 
         public IndexerSet Indexer { get; private set; }
 
-        public IReadOnlyList<SourceIndexingAgent> DocumentSources
+        public IReadOnlyList<Indexer> DocumentSources
         {
             get { return Indexer.Sources; }
         }
@@ -158,11 +158,11 @@ namespace Primitive.Text.Indexing.UI
 
 
 
-        private void RemoveDocumentSource(SourceIndexingAgent sourceIndexingAgent)
+        private void RemoveDocumentSource(Indexer indexer)
         {
-            if (sourceIndexingAgent != null)
+            if (indexer != null)
             {
-                Indexer.RemoveSource(sourceIndexingAgent);
+                Indexer.RemoveSource(indexer);
                 OnPropertyChanged("DocumentSources");
                 ExecuteQuery();
             }
