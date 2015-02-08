@@ -26,6 +26,7 @@ namespace Primitive.Text.Indexing
         private volatile int documentsParsed;
         private volatile int documentsFound;
         private volatile int documentsChanged;
+        private volatile int documentsFailed;
 
         private volatile int runningParsers;
         private volatile Exception error;
@@ -112,6 +113,19 @@ namespace Primitive.Text.Indexing
             private set
             {
                 documentsParsed = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        ///  Gets the counter value counting number of documents failed to be indexed.
+        /// </summary>
+        public int DocumentsFailed
+        {
+            get { return documentsFailed; }
+            private set
+            {
+                documentsFailed = value;
                 OnPropertyChanged();
             }
         }
@@ -208,6 +222,7 @@ namespace Primitive.Text.Indexing
                         words => new IndexedDocument(documentInfo, words))
                     .Catch((Exception e) =>
                     {
+                        DocumentsFailed += 1;
                         indexingErrors.OnNext(Tuple.Create(documentInfo, e));
                         // consider there is no document to index if words can't be extracted from it.
                         return Observable.Empty<IndexedDocument>();

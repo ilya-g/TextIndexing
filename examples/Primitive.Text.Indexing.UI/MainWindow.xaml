@@ -66,6 +66,9 @@
                             <TextBlock Width="100">
                                 Indexed: <Run Text="{Binding DocumentsParsed, Mode=OneWay}" />
                             </TextBlock>
+                            <TextBlock Width="100">
+                                Failed: <Run Text="{Binding DocumentsFailed, Mode=OneWay}" />
+                            </TextBlock>
                             <TextBlock>
                                 <Hyperlink Command="{StaticResource RemoveDocumentSourceCommand}" CommandParameter="{Binding}">Remove from index</Hyperlink>
                             </TextBlock>
