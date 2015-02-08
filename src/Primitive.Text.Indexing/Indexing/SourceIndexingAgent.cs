@@ -36,7 +36,7 @@ namespace Primitive.Text.Indexing
         /// <summary>
         ///  The Indexer this <see cref="SourceIndexingAgent"/> belongs to.
         /// </summary>
-        public Indexer Indexer { get; private set; }
+        public IndexerSet Indexer { get; private set; }
 
         /// <summary>
         ///  Gets the <see cref="IDocumentSource"/> being indexed
@@ -141,7 +141,7 @@ namespace Primitive.Text.Indexing
         public IObservable<Tuple<DocumentInfo, Exception>> IndexingErrors { get { return indexingErrors; } }
 
 
-        internal SourceIndexingAgent([NotNull] Indexer indexer, [NotNull] IDocumentSource source)
+        internal SourceIndexingAgent([NotNull] IndexerSet indexer, [NotNull] IDocumentSource source)
         {
             if (indexer == null) throw new ArgumentNullException("indexer");
             if (source == null) throw new ArgumentNullException("source");
@@ -278,7 +278,7 @@ namespace Primitive.Text.Indexing
         Indexing,
         /// <summary>Document parsing and indexing is completed, now watching for changes in document source</summary>
         Watching,
-        /// <summary>An error is happened during the indexing, which lead to furthest indexing being impossible.</summary>
+        /// <summary>An error is happened during the indexing, which made further indexing being impossible.</summary>
         /// <remarks>The error can be obtained with the <see cref="SourceIndexingAgent.Error"/> property</remarks>
         Failed
     }

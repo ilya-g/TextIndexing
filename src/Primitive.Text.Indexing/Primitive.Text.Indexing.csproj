@@ -60,7 +60,7 @@
     <Compile Include="Documents\Sources\SearchPattern.cs" />
     <Compile Include="Documents\Sources\SingleFileDocumentSource.cs" />
     <Compile Include="Indexing\IIndex.cs" />
-    <Compile Include="Indexing\Indexer.cs" />
+    <Compile Include="Indexing\IndexerSet.cs" />
     <Compile Include="Indexing\IndexerCreationOptions.cs" />
     <Compile Include="Indexing\Indexes\ImmutableIndex.cs" />
     <Compile Include="Indexing\Indexes\LockingIndex.cs" />

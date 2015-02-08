@@ -8,7 +8,7 @@ using Primitive.Text.Parsers;
 namespace Primitive.Text.Indexing
 {
     /// <summary>
-    ///  Specifies the options to be used in <see cref="Indexer.Create(IndexerCreationOptions)" /> method.
+    ///  Specifies the options to be used in <see cref="IndexerSet.Create(IndexerCreationOptions)" /> method.
     /// </summary>
     public sealed class IndexerCreationOptions
     {
@@ -64,7 +64,7 @@ namespace Primitive.Text.Indexing
         ///  Creates the index using the options specified in this instance
         /// </summary>
         /// <remarks>
-        ///  Used in <see cref="Indexer"/> to create the <see cref="IIndex"/> implementation
+        ///  Used in <see cref="IndexerSet"/> to create the <see cref="IIndex"/> implementation
         /// </remarks>
         public IIndex CreateIndex()
         {

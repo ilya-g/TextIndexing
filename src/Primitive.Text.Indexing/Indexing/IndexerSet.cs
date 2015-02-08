@@ -14,7 +14,7 @@ namespace Primitive.Text.Indexing
     /// </summary>
     /// <remarks>
     /// </remarks>
-    public sealed class Indexer
+    public sealed class IndexerSet
     {
         /// <summary>
         ///  Gets the <see cref="IIndex"/> instance, used to store the relationship between words and documents
@@ -46,7 +46,7 @@ namespace Primitive.Text.Indexing
         private readonly IComparer<string> wordComparer;
 
 
-        private Indexer([NotNull] IIndex index, [NotNull] IStreamParser streamParser)
+        private IndexerSet([NotNull] IIndex index, [NotNull] IStreamParser streamParser)
         {
             if (index == null) throw new ArgumentNullException("index");
             if (streamParser == null) throw new ArgumentNullException("streamParser");
@@ -61,7 +61,7 @@ namespace Primitive.Text.Indexing
         /// <summary>
         ///  Creates Indexer with the default <see cref="IndexerCreationOptions"/>
         /// </summary>
-        public static Indexer Create()
+        public static IndexerSet Create()
         {
             return Create(new IndexerCreationOptions());
         }
@@ -70,7 +70,7 @@ namespace Primitive.Text.Indexing
         ///  Creates Indexer with the specified <see cref="IndexerCreationOptions"/>
         /// </summary>
         /// <param name="options">Options that define indexer behavior: word comparsion, index locking, document parser</param>
-        public static Indexer Create([NotNull] IndexerCreationOptions options)
+        public static IndexerSet Create([NotNull] IndexerCreationOptions options)
         {
             if (options == null) throw new ArgumentNullException("options");
             if (options.StreamParser != null && options.LineParser != null)
@@ -78,7 +78,7 @@ namespace Primitive.Text.Indexing
 
             var index = options.CreateIndex();
             var parser = options.StreamParser ?? new LineStreamParser(options.LineParser ?? AlphaNumericWordsLineParser.Instance);
-            return new Indexer(index, parser);
+            return new IndexerSet(index, parser);
         }
 
 
