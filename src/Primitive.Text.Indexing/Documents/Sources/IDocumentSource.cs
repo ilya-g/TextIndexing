@@ -30,15 +30,15 @@ namespace Primitive.Text.Documents.Sources
         IObservable<DocumentInfo> WatchForChangedDocuments();
 
         /// <summary>
-        ///  Extracts words to index from the <paramref name="document"/> with the specified <paramref name="streamParser"/>
+        ///  Extracts words to index from the <paramref name="document"/> with the specified <paramref name="textParser"/>
         /// </summary>
         /// <param name="document">The document from this source</param>
-        /// <param name="streamParser">The parser to be used to extract words from the document stream</param>
+        /// <param name="textParser">The parser to be used to extract words from the document stream</param>
         /// <returns>
         /// Returns an observable sequence of document words, that being subscribed to
         /// pushes all words from the document and then completes. 
         /// This sequence can also complete with fail, if there was  an error opening or reading the document.
         /// </returns>
-        IObservable<string> ExtractDocumentWords([NotNull] DocumentInfo document, [NotNull] IStreamParser streamParser);
+        IObservable<string> ExtractDocumentWords([NotNull] DocumentInfo document, [NotNull] ITextParser textParser);
     }
 }

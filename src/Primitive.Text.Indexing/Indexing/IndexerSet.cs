@@ -23,13 +23,13 @@ namespace Primitive.Text.Indexing
         public IIndex Index { get; private set; }
         
         /// <summary>
-        ///  Gets the default <see cref="IStreamParser"/> used to extract index words from the document stream
+        ///  Gets the default <see cref="ITextParser"/> used to extract index words from the document stream
         /// </summary>
         /// <remarks>
-        ///  This stream parser is used in <see cref="Add(IDocumentSource, IStreamParser, bool)"/> method to create <see cref="Indexer"/> for <see cref="IDocumentSource"/>
+        ///  This stream parser is used in <see cref="Add(IDocumentSource, ITextParser, bool)"/> method to create <see cref="Indexer"/> for <see cref="IDocumentSource"/>
         /// </remarks>
         [NotNull]
-        public IStreamParser DefaultStreamParser { get; private set; }
+        public ITextParser DefaultTextParser { get; private set; }
 
         /// <summary>
         ///  Gets the list of sources included into this index
@@ -47,13 +47,13 @@ namespace Primitive.Text.Indexing
         private volatile IImmutableList<Indexer> indexers;
 
 
-        private IndexerSet([NotNull] IIndex index, [NotNull] IStreamParser defaultStreamParser)
+        private IndexerSet([NotNull] IIndex index, [NotNull] ITextParser defaultTextParser)
         {
             if (index == null) throw new ArgumentNullException("index");
-            if (defaultStreamParser == null) throw new ArgumentNullException("defaultStreamParser");
+            if (defaultTextParser == null) throw new ArgumentNullException("defaultTextParser");
 
             Index = index;
-            DefaultStreamParser = defaultStreamParser;
+            DefaultTextParser = defaultTextParser;
 
             indexers = ImmutableList<Indexer>.Empty;
         }
@@ -106,21 +106,21 @@ namespace Primitive.Text.Indexing
         ///  adds it to the <see cref="Indexers"/> list
         /// </summary>
         /// <param name="source">The source, providing documents to include in the index</param>
-        /// <param name="streamParser">
-        ///  The <see cref="IStreamParser"/> used to extract words from documents of this source.
-        ///  In case if this parameter is not specified, the <see cref="DefaultStreamParser"/> property value is used.
+        /// <param name="textParser">
+        ///  The <see cref="ITextParser"/> used to extract words from documents of this source.
+        ///  In case if this parameter is not specified, the <see cref="DefaultTextParser"/> property value is used.
         /// </param>
         /// <param name="autoStartIndexing">Specifies, whether to start indexing this source immediately</param>
         /// <returns>Returns an <see cref="Indexer"/> created for the <paramref name="source"/></returns>
         /// <exception cref="ArgumentException">Thrown when the <paramref name="source"/> is already included in this set</exception>
-        public Indexer Add([NotNull] IDocumentSource source, IStreamParser streamParser = null, bool autoStartIndexing = true)
+        public Indexer Add([NotNull] IDocumentSource source, ITextParser textParser = null, bool autoStartIndexing = true)
         {
             if (source == null)
                 throw new ArgumentNullException("source");
             if (ContainsSource(source))
                 throw new ArgumentException("Source is already included in this IndexerSet", "source");
 
-            var indexer = new Indexer(Index, source, streamParser ?? DefaultStreamParser);
+            var indexer = new Indexer(Index, source, textParser ?? DefaultTextParser);
 
             lock (this)
                 indexers = indexers.Add(indexer);

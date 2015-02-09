@@ -40,21 +40,21 @@ namespace Primitive.Text.Indexing
 
         /// <summary>
         ///  Creates an instance of <see cref="Indexer"/> that will be indexing documents from 
-        ///  the specified <paramref name="source"/> with the <paramref name="streamParser"/> and 
+        ///  the specified <paramref name="source"/> with the <paramref name="textParser"/> and 
         ///  merging them to the <paramref name="index"/>
         /// </summary>
         /// <param name="index"></param>
         /// <param name="source"></param>
-        /// <param name="streamParser"></param>
-        public Indexer([NotNull] IIndex index, [NotNull] IDocumentSource source, [NotNull] IStreamParser streamParser)
+        /// <param name="textParser"></param>
+        public Indexer([NotNull] IIndex index, [NotNull] IDocumentSource source, [NotNull] ITextParser textParser)
         {
             if (index == null) throw new ArgumentNullException("index");
             if (source == null) throw new ArgumentNullException("source");
-            if (streamParser == null) throw new ArgumentNullException("streamParser");
+            if (textParser == null) throw new ArgumentNullException("textParser");
 
             this.Index = index;
             this.Source = source;
-            this.StreamParser = streamParser;
+            this.TextParser = textParser;
             this.wordComparer = new StringComparisonComparer(index.WordComparison);
         }
 
@@ -71,9 +71,9 @@ namespace Primitive.Text.Indexing
         public IDocumentSource Source { get; private set; }
 
         /// <summary>
-        ///  Gets the <see cref="IStreamParser"/> used to extract index words from the document stream
+        ///  Gets the <see cref="ITextParser"/> used to extract index words from the document stream
         /// </summary>
-        public IStreamParser StreamParser { get; private set; }
+        public ITextParser TextParser { get; private set; }
 
         /// <summary>
         ///  Gets the indexing state value
@@ -243,7 +243,7 @@ namespace Primitive.Text.Indexing
         private IObservable<IndexedDocument> IndexDocument(DocumentInfo documentInfo)
         {
             return
-                Source.ExtractDocumentWords(documentInfo, StreamParser)
+                Source.ExtractDocumentWords(documentInfo, TextParser)
                     .Aggregate(new SortedSet<string>(wordComparer),
                         (set, word) =>
                         {

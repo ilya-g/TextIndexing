@@ -60,10 +60,10 @@ namespace Primitive.Text.Documents.Sources
 
 
         /// <summary>
-        ///  Extracts words to index from the <paramref name="document"/> with the specified <paramref name="streamParser"/>
+        ///  Extracts words to index from the <paramref name="document"/> with the specified <paramref name="textParser"/>
         /// </summary>
         /// <param name="document">The document from this source</param>
-        /// <param name="streamParser">The parser to be used to extract words from the document stream</param>
+        /// <param name="textParser">The parser to be used to extract words from the document stream</param>
         /// <returns>
         /// Returns an observable sequence of document words, that being subscribed to
         /// pushes all words from the document and then completes. This sequence also complete with fail, if there was
@@ -73,10 +73,10 @@ namespace Primitive.Text.Documents.Sources
         /// This override adds retry semantics in case of document file is locked or cannot be opened due to some other
         /// <see cref="IOException"/>
         /// </remarks>
-        public override IObservable<string> ExtractDocumentWords(DocumentInfo document, IStreamParser streamParser)
+        public override IObservable<string> ExtractDocumentWords(DocumentInfo document, ITextParser textParser)
         {
             return RetryOn(
-                base.ExtractDocumentWords(document, streamParser),
+                base.ExtractDocumentWords(document, textParser),
                 shouldRetry: e => e is IOException, retryTimes: 3, retryDelay: TimeSpan.FromSeconds(1));
         }
 

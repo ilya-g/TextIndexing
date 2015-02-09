@@ -26,10 +26,10 @@ namespace Primitive.Text.Documents.Sources
 
 
         /// <summary>
-        ///  Extracts words to index from the <paramref name="document"/> with the specified <paramref name="streamParser"/>
+        ///  Extracts words to index from the <paramref name="document"/> with the specified <paramref name="textParser"/>
         /// </summary>
         /// <param name="document">The document from this source</param>
-        /// <param name="streamParser">The parser to be used to extract words from the document stream</param>
+        /// <param name="textParser">The parser to be used to extract words from the document stream</param>
         /// <returns>
         /// Returns an observable sequence of document words, that being subscribed to
         /// pushes all words from the document and then completes. This sequence also complete with fail, if there was
@@ -38,7 +38,7 @@ namespace Primitive.Text.Documents.Sources
         /// <remarks>
         /// This method can be overriden in derived classes to add some behavior to the returned observable sequence
         /// </remarks>
-        public virtual IObservable<string> ExtractDocumentWords(DocumentInfo document, IStreamParser streamParser)
+        public virtual IObservable<string> ExtractDocumentWords(DocumentInfo document, ITextParser textParser)
         {
             EnsureOwnDocument(document);
 
@@ -46,7 +46,7 @@ namespace Primitive.Text.Documents.Sources
                 () => OpenDocument(document),
                 reader =>
                     reader != null
-                        ? streamParser.ExtractWords(reader)
+                        ? textParser.ExtractWords(reader)
                         : Observable.Empty<string>());
         }
 
