@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using JetBrains.Annotations;
 using Primitive.Text.Documents.Sources;
-using Primitive.Text.Indexing.Internal;
 using Primitive.Text.Parsers;
 
 namespace Primitive.Text.Indexing
@@ -23,10 +23,13 @@ namespace Primitive.Text.Indexing
         public IIndex Index { get; private set; }
         
         /// <summary>
-        ///  Gets the <see cref="IStreamParser"/> used to extract index words from the document stream
+        ///  Gets the default <see cref="IStreamParser"/> used to extract index words from the document stream
         /// </summary>
+        /// <remarks>
+        ///  This stream parser is used in <see cref="Add(IDocumentSource, IStreamParser, bool)"/> method to create <see cref="Indexer"/> for <see cref="IDocumentSource"/>
+        /// </remarks>
         [NotNull]
-        public IStreamParser StreamParser { get; private set; }
+        public IStreamParser DefaultStreamParser { get; private set; }
 
         /// <summary>
         ///  Gets the list of sources included into this index
@@ -35,27 +38,24 @@ namespace Primitive.Text.Indexing
         ///  The list containing <see cref="Indexer"/> instances for each <see cref="IDocumentSource"/> added.
         /// </value>
         /// <remarks>
-        ///  Use <see cref="AddSource"/> and <see cref="RemoveSource"/> methods to change the list of sources
+        ///  Use <see cref="Add(Indexer)"/> and <see cref="Remove"/> methods to change the list of sources
         /// </remarks>
         [NotNull]
-        public IReadOnlyList<Indexer> Sources { get { return sources; } }
+        public IReadOnlyList<Indexer> Indexers { get { return indexers; } }
 
 
-        private volatile IImmutableList<Indexer> sources;
-
-        private readonly IComparer<string> wordComparer;
+        private volatile IImmutableList<Indexer> indexers;
 
 
-        private IndexerSet([NotNull] IIndex index, [NotNull] IStreamParser streamParser)
+        private IndexerSet([NotNull] IIndex index, [NotNull] IStreamParser defaultStreamParser)
         {
             if (index == null) throw new ArgumentNullException("index");
-            if (streamParser == null) throw new ArgumentNullException("streamParser");
+            if (defaultStreamParser == null) throw new ArgumentNullException("defaultStreamParser");
 
             Index = index;
-            StreamParser = streamParser;
+            DefaultStreamParser = defaultStreamParser;
 
-            wordComparer = new StringComparisonComparer(index.WordComparison);
-            sources = ImmutableList<Indexer>.Empty;
+            indexers = ImmutableList<Indexer>.Empty;
         }
 
         /// <summary>
@@ -73,68 +73,94 @@ namespace Primitive.Text.Indexing
         public static IndexerSet Create([NotNull] IndexerCreationOptions options)
         {
             if (options == null) throw new ArgumentNullException("options");
-            if (options.StreamParser != null && options.LineParser != null)
-                throw new ArgumentException("StreamParser and LineParser cannot be specified simulaneosly", "options");
 
             var index = options.CreateIndex();
-            var parser = options.StreamParser ?? new LineStreamParser(options.LineParser ?? AlphaNumericWordsLineParser.Instance);
+            var parser = options.GetDefaultStreamParser();
             return new IndexerSet(index, parser);
         }
 
 
         /// <summary>
-        ///  Creates <see cref="Indexer"/> for the specified <paramref name="source"/> and 
-        ///  adds it to the <see cref="Sources"/> list
+        ///  Adds the specified <paramref name="indexer"/> to the <see cref="Indexers"/> list
         /// </summary>
-        /// <param name="source">The source, providing documents to include in the index</param>
-        /// <param name="autoStartIndexing">Specifies, whether to start indexing this source immediately</param>
-        /// <returns>Returns <see cref="Indexer"/> created for the <paramref name="source"/></returns>
-        public Indexer AddSource([NotNull] IDocumentSource source, bool autoStartIndexing = true)
+        /// <param name="indexer">An <see cref="Indexer"/> to add</param>
+        /// <returns>Returns a reference to the same <paramref name="indexer"/>, allowing other operations to be chained</returns>
+        /// <exception cref="ArgumentException">
+        ///  Throw when this set already contains an indexer with the same <see cref="Indexer.Source"/>
+        ///  property value as the <paramref name="indexer"/> being added
+        /// </exception>
+        public Indexer Add([NotNull] Indexer indexer)
         {
-            if (source == null)
-                throw new ArgumentNullException("source");
-
-            var sourceIndexingAgent = new Indexer(this, source);
+            if (indexer == null) throw new ArgumentNullException("indexer");
+            if (ContainsSource(indexer.Source))
+                throw new ArgumentException("Source is already included in this IndexerSet", "indexer");
 
             lock (this)
-                sources = sources.Add(sourceIndexingAgent);
+                indexers = indexers.Add(indexer);
 
-            if (autoStartIndexing)
-                sourceIndexingAgent.StartIndexing();
-
-            return sourceIndexingAgent;
+            return indexer;
         }
 
         /// <summary>
-        ///  Removes the specified <paramref name="indexerndexingAgent"/> from the <see cref="Sources"/> list
+        ///  Creates <see cref="Indexer"/> for the specified <paramref name="source"/> and 
+        ///  adds it to the <see cref="Indexers"/> list
         /// </summary>
-        /// <param name="indexerndexingAgent">The <see cref="Indexer"/> to remove from list</param>
+        /// <param name="source">The source, providing documents to include in the index</param>
+        /// <param name="streamParser">
+        ///  The <see cref="IStreamParser"/> used to extract words from documents of this source.
+        ///  In case if this parameter is not specified, the <see cref="DefaultStreamParser"/> property value is used.
+        /// </param>
+        /// <param name="autoStartIndexing">Specifies, whether to start indexing this source immediately</param>
+        /// <returns>Returns an <see cref="Indexer"/> created for the <paramref name="source"/></returns>
+        /// <exception cref="ArgumentException">Thrown when the <paramref name="source"/> is already included in this set</exception>
+        public Indexer Add([NotNull] IDocumentSource source, IStreamParser streamParser = null, bool autoStartIndexing = true)
+        {
+            if (source == null)
+                throw new ArgumentNullException("source");
+            if (ContainsSource(source))
+                throw new ArgumentException("Source is already included in this IndexerSet", "source");
+
+            var indexer = new Indexer(Index, source, streamParser ?? DefaultStreamParser);
+
+            lock (this)
+                indexers = indexers.Add(indexer);
+
+            if (autoStartIndexing)
+                indexer.StartIndexing();
+
+            return indexer;
+        }
+
+        private bool ContainsSource(IDocumentSource source)
+        {
+            return indexers.Any(indexer => indexer.Source == source);
+        }
+
+        /// <summary>
+        ///  Removes the specified <paramref name="indexer"/> from the <see cref="Indexers"/> list
+        /// </summary>
+        /// <param name="indexer">The <see cref="Indexer"/> to remove from list</param>
         /// <remarks>
-        ///  If the <see cref="Sources"/> list doesn't contain the specified <paramref name="indexerndexingAgent"/>,
+        ///  If the <see cref="Indexers"/> list doesn't contain the specified <paramref name="indexer"/>,
         ///  this method does nothing.
         /// </remarks>
-        public void RemoveSource([NotNull] Indexer indexer)
+        public void Remove([NotNull] Indexer indexer)
         {
             if (indexer == null)
                 throw new ArgumentNullException("indexer");
 
             lock (this)
             {
-                var newSources = sources.Remove(indexer);
-                if (sources == newSources)
+                var newSources = indexers.Remove(indexer);
+                if (indexers == newSources)
                     return;
-                sources = newSources;
+                indexers = newSources;
             }
 
             indexer.StopIndexing();
-            // remove all documents from this source from index
-            Index.RemoveDocumentsMatching(document => document.Source == indexer.DocumentSource);
+            indexer.RemoveFromIndex();
         }
 
-        internal ISet<string> CreateEmptyWordSet()
-        {
-            return new SortedSet<string>(wordComparer);
-        }
 
 
     }

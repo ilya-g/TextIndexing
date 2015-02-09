@@ -47,6 +47,7 @@ namespace Primitive.Text.Indexing
         ///  <para>When the both <see cref="LineParser"/> and <see cref="StreamParser"/> are not specified, 
         ///  an instance of <see cref="AlphaNumericWordsLineParser"/> is used.</para>
         /// </remarks>
+        /// <seealso cref="GetDefaultStreamParser"/>
         public ILineParser LineParser { get; set; }
 
 
@@ -58,6 +59,7 @@ namespace Primitive.Text.Indexing
         ///  When this value is not specified the default implementation of <see cref="LineStreamParser"/> is created with the value of 
         /// <see cref="LineParser"/> as line parser.
         /// </remarks>
+        /// <seealso cref="GetDefaultStreamParser"/>
         public IStreamParser StreamParser { get; set; }
 
         /// <summary>
@@ -81,6 +83,28 @@ namespace Primitive.Text.Indexing
                 default:
                     throw new ArgumentOutOfRangeException(string.Format("IndexLocking option value '{0}' is out of range", IndexLocking), "IndexLocking");
             }
+        }
+
+
+        /// <summary>
+        ///  Gets the instance of <see cref="IStreamParser"/> based on values of 
+        ///  <see cref="StreamParser"/> and <see cref="LineParser"/> properties.
+        /// </summary>
+        /// <returns>
+        ///  The value of <see cref="StreamParser"/> if it's specified.
+        ///  Otherwise a new instance of <see cref="LineStreamParser"/> with its 
+        ///  <see cref="LineStreamParser.LineParser"/> initialized with the value of <see cref="LineParser"/> property.
+        ///  If the latter is not set, the <see cref="AlphaNumericWordsLineParser"/> is used.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        ///  Both <see cref="StreamParser"/> and <see cref="LineParser"/> are not null
+        /// </exception>
+        public IStreamParser GetDefaultStreamParser()
+        {
+            if (StreamParser != null && LineParser != null)
+                throw new InvalidOperationException("StreamParser and LineParser cannot be specified simulaneosly");
+
+            return StreamParser ?? new LineStreamParser(LineParser ?? AlphaNumericWordsLineParser.Instance);
         }
 
     }

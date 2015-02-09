@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Documents.Sources;
+using Primitive.Text.Indexing.Internal;
+using Primitive.Text.Parsers;
 
 namespace Primitive.Text.Indexing
 {
@@ -33,15 +35,45 @@ namespace Primitive.Text.Indexing
 
         private readonly Subject<Tuple<DocumentInfo, Exception>> indexingErrors = new Subject<Tuple<DocumentInfo, Exception>>();
 
+        private readonly StringComparisonComparer wordComparer;
+
+
+        /// <summary>
+        ///  Creates an instance of <see cref="Indexer"/> that will be indexing documents from 
+        ///  the specified <paramref name="source"/> with the <paramref name="streamParser"/> and 
+        ///  merging them to the <paramref name="index"/>
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="source"></param>
+        /// <param name="streamParser"></param>
+        public Indexer([NotNull] IIndex index, [NotNull] IDocumentSource source, [NotNull] IStreamParser streamParser)
+        {
+            if (index == null) throw new ArgumentNullException("index");
+            if (source == null) throw new ArgumentNullException("source");
+            if (streamParser == null) throw new ArgumentNullException("streamParser");
+
+            this.Index = index;
+            this.Source = source;
+            this.StreamParser = streamParser;
+            this.wordComparer = new StringComparisonComparer(index.WordComparison);
+        }
+
+
+
         /// <summary>
         ///  The Indexer this <see cref="Indexing.Indexer"/> belongs to.
         /// </summary>
-        public IndexerSet IndexerSet { get; private set; }
+        public IIndex Index { get; private set; }
 
         /// <summary>
         ///  Gets the <see cref="IDocumentSource"/> being indexed
         /// </summary>
-        public IDocumentSource DocumentSource { get; private set; }
+        public IDocumentSource Source { get; private set; }
+
+        /// <summary>
+        ///  Gets the <see cref="IStreamParser"/> used to extract index words from the document stream
+        /// </summary>
+        public IStreamParser StreamParser { get; private set; }
 
         /// <summary>
         ///  Gets the indexing state value
@@ -50,23 +82,23 @@ namespace Primitive.Text.Indexing
         ///  The indexing state describes which activity this <see cref="Indexing.Indexer"/> is busy with.
         ///  The returned value may reflect state changes with a certain amount of delay.
         /// </remarks>
-        public SourceIndexingState State
+        public IndexingState State
         {
             get
             {
                 return 
-                    subscription == null ? SourceIndexingState.Stopped :
-                    error != null ? SourceIndexingState.Failed :
-                    runningParsers > 0 ? SourceIndexingState.Indexing :
-                        SourceIndexingState.Watching;
+                    subscription == null ? IndexingState.Stopped :
+                    error != null ? IndexingState.Failed :
+                    runningParsers > 0 ? IndexingState.Indexing :
+                        IndexingState.Watching;
             }
         }
 
         /// <summary>
-        ///  Gets the exception value, describing the reason this instance is in the <see cref="SourceIndexingState.Failed"/> state
+        ///  Gets the exception value, describing the reason this instance is in the <see cref="IndexingState.Failed"/> state
         /// </summary>
         /// <value>
-        ///  In case if the <see cref="State"/> is <see cref="SourceIndexingState.Failed"/> the exception which has lead to this state,
+        ///  In case if the <see cref="State"/> is <see cref="IndexingState.Failed"/> the exception which has lead to this state,
         ///  null otherwise.
         /// </value>
         public Exception Error
@@ -134,24 +166,15 @@ namespace Primitive.Text.Indexing
         ///  Exposes hot observable stream of errors, encountered during parsing or indexing individual documents
         /// </summary>
         /// <remarks>
-        ///  Document indexing error does not lead this instance to the <see cref="SourceIndexingState.Failed"/> state
+        ///  Document indexing error does not lead this instance to the <see cref="IndexingState.Failed"/> state
         ///  and is to be ignored.
         ///  This stream provides the way to observe such errors.
         /// </remarks>
         public IObservable<Tuple<DocumentInfo, Exception>> IndexingErrors { get { return indexingErrors; } }
 
 
-        internal Indexer([NotNull] IndexerSet indexerSet, [NotNull] IDocumentSource source)
-        {
-            if (indexerSet == null) throw new ArgumentNullException("indexerSet");
-            if (source == null) throw new ArgumentNullException("source");
-
-            IndexerSet = indexerSet;
-            DocumentSource = source;
-        }
-
         /// <summary>
-        ///  Begins the indexing of <see cref="DocumentSource"/>.
+        ///  Begins the indexing of <see cref="Source"/>.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -169,11 +192,11 @@ namespace Primitive.Text.Indexing
 
                 subscription = 
                     Observable.Merge(
-                        DocumentSource.FindAllDocuments()
+                        Source.FindAllDocuments()
                             .Buffer(TimeSpan.FromSeconds(0.5), 50)
                             .Where(changes => changes.Count > 0)
                             .Do(files => DocumentsFound += files.Count),
-                        DocumentSource.WatchForChangedDocuments()
+                        Source.WatchForChangedDocuments()
                             .Buffer(TimeSpan.FromSeconds(0.5))
                             .Where(changes => changes.Count > 0)
                             .Select(changes => changes.Distinct().ToList())
@@ -182,17 +205,17 @@ namespace Primitive.Text.Indexing
                     .SelectMany(files => files)
                     .SelectMany(IndexDocument)
                     .Do(_ => OnParsingStarted())
-                    .Select(d => Observable.FromAsync(() => Task.Run(() => IndexerSet.Index.Merge(d.Document, d.IndexWords))))
+                    .Select(d => Observable.FromAsync(() => Task.Run(() => Index.Merge(d.Document, d.IndexWords))))
                     .Merge(maxConcurrentIndexing)
                     .Do(_ => DocumentsParsed += 1, ex => { this.Error = ex; OnStateChanged(); })
                     .Throttle(TimeSpan.FromSeconds(1))
-                    .Subscribe(_ => OnParsingCompleted(), _ => { });;
+                    .Subscribe(_ => OnParsingCompleted(), _ => { });
             }
             OnStateChanged();
         }
 
         /// <summary>
-        ///  Stops the indexing of <see cref="DocumentSource"/> and clears the <see cref="Error"/> if any.
+        ///  Stops the indexing of <see cref="Source"/> and clears the <see cref="Error"/> if any.
         /// </summary>
         public void StopIndexing()
         {
@@ -208,12 +231,20 @@ namespace Primitive.Text.Indexing
             OnStateChanged();
         }
 
+        /// <summary>
+        ///  Removes all documents, indexed with this indexer, from the <see cref="Index"/>
+        /// </summary>
+        public void RemoveFromIndex()
+        {
+            Index.RemoveDocumentsMatching(document => document.Source == Source);
+        }
+
 
         private IObservable<IndexedDocument> IndexDocument(DocumentInfo documentInfo)
         {
             return
-                DocumentSource.ExtractDocumentWords(documentInfo, IndexerSet.StreamParser)
-                    .Aggregate(IndexerSet.CreateEmptyWordSet(),
+                Source.ExtractDocumentWords(documentInfo, StreamParser)
+                    .Aggregate(new SortedSet<string>(wordComparer),
                         (set, word) =>
                         {
                             set.Add(word);
@@ -270,7 +301,7 @@ namespace Primitive.Text.Indexing
     /// <summary>
     ///  Indicates the state of <see cref="Indexer"/> indexing
     /// </summary>
-    public enum SourceIndexingState
+    public enum IndexingState
     {
         /// <summary>Indexing is stopped</summary>
         Stopped,
