@@ -43,3 +43,23 @@ var banWords = indexerSet.Index.GetWordsStartWith("ban");
 
 This query will return sequence of `WordDocuments`, one for each matching word. Then you can flatten this sequence with SelectMany operation:
 `var banDocuments = banWords.SelectMany(wordDocuments => wordDocuments);`
+
+## Advanced usage
+
+An `IIndex` instance can be used without creating `IndexerSet`. The following example shows, how to create an index and attach an Indexer to it:
+
+`````C#
+var options = new IndexerCreationOptions();
+var index = options.CreateIndex();
+var parser = options.GetDefaultStreamParser();
+
+var indexer = new Indexer(
+    index, 
+    new DirectoryDocumentSource(AppDomain.CurrentDomain.BaseDirectory, "*.txt"), 
+    parser);
+indexer.StartIndexing();
+`````
+
+## Custom document parsers
+
+To create custom document parser one should implement `ILineParser` or `IStreamParser` interface. The former being provided with the text line by line should extract all words it can from each individual line. No state should be shared between calls by `ILineParser` implementation. The latter is provided with `TextReader` and can read entire document with it.
