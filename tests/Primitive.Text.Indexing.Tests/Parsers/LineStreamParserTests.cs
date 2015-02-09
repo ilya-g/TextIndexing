@@ -35,7 +35,7 @@ namespace Primitive.Text.Parsers
             const int takeLines = 3;
             var lines = File.ReadAllLines(file, encoding).Take(takeLines);
 
-            var streamParser = new LineStreamParser(UnitLineParser.Instance);
+            var streamParser = new LineTextParser(UnitLineParser.Instance);
             int linesTaken = 0;
             var lineStream = Observable.Using(() => new StreamReader(file, encoding),
                 reader => streamParser.ExtractWords(reader).Do(line => linesTaken++).Take(takeLines));
@@ -53,7 +53,7 @@ namespace Primitive.Text.Parsers
                     65536,
                     FileOptions.SequentialScan | (isAsyncStream ? FileOptions.Asynchronous : 0))))
             {
-                var parser = new LineStreamParser(AlphaNumericWordsLineParser.Instance) { UseAsync = isAsyncParser };
+                var parser = new LineTextParser(AlphaNumericWordsLineParser.Instance) { UseAsync = isAsyncParser };
                 var sw = Stopwatch.StartNew();
                 var count = parser.ExtractWords(reader).Count().Wait();
                 Console.WriteLine("Read {0} words in {1}", count, sw.Elapsed);

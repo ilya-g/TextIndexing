@@ -21,7 +21,7 @@ namespace Primitive.Text.Documents.Sources
             throw new NotImplementedException();
         }
 
-        public IObservable<string> ExtractDocumentWords(DocumentInfo document, IStreamParser streamParser)
+        public IObservable<string> ExtractDocumentWords(DocumentInfo document, ITextParser textParser)
         {
             throw new NotImplementedException();
         }

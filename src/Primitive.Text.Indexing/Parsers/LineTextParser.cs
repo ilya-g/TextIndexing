@@ -12,18 +12,18 @@ namespace Primitive.Text.Parsers
 {
 
     /// <summary>
-    ///  Provides the <see cref="IStreamParser"/> implementation which reads the document content line by line
+    ///  Provides the <see cref="ITextParser"/> implementation which reads the document content line by line
     ///  and parses each line with specified <see cref="ILineParser"/> instance.
     /// </summary>
-    public sealed class LineStreamParser : IStreamParser
+    public sealed class LineTextParser : ITextParser
     {
         private readonly ILineParser lineParser;
 
         /// <summary>
-        ///  Initializes a new <see cref="LineStreamParser"/> instance with the <paramref name="lineParser"/>
+        ///  Initializes a new <see cref="LineTextParser"/> instance with the <paramref name="lineParser"/>
         /// </summary>
         /// <param name="lineParser">A <see cref="ILineParser"/> instance used to extract words from individual lines of content</param>
-        public LineStreamParser(ILineParser lineParser)
+        public LineTextParser(ILineParser lineParser)
         {
             this.lineParser = lineParser;
             UseAsync = false;
@@ -40,7 +40,7 @@ namespace Primitive.Text.Parsers
         /// <value>Default value is false</value>
         /// <remarks>
         ///  Reading a stream asynchronously can prevent threads congestion, when there are a plenty of simultaneos
-        ///  <see cref="LineStreamParser"/>s working.
+        ///  <see cref="LineTextParser"/>s working.
         ///  May be a quite slower than synchonous reading, but this is often unnoticeable, compared to the time spent in
         ///  <see cref="LineParser"/>.
         /// </remarks>

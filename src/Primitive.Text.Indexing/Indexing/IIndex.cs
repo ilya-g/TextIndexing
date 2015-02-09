@@ -29,7 +29,7 @@ namespace Primitive.Text.Indexing
         ///  <see cref="WordDocuments"/> structure, containing the word that was queried
         ///  and the documents from the index associtated with that word
         /// </returns>
-        WordDocuments GetExactWord([CanBeNull] string word);
+        WordDocuments GetExactWord([NotNull] string word);
 
         /// <summary>
         /// Queries the index for all words starting with the specified <paramref name="wordBeginning"/> part 
@@ -86,7 +86,7 @@ namespace Primitive.Text.Indexing
     public interface IIndex : IReadOnlyIndex
     {
         /// <summary>
-        ///  Creates the copy of this index, that will remain unchanged even if this instace is changed later.
+        ///  Creates the copy of this index, that will remain unchanged even if this instance is changed later.
         /// </summary>
         /// <returns><see cref="IReadOnlyIndex"/> instance that holds the frozen snapshot of this index</returns>
         /// <remarks>

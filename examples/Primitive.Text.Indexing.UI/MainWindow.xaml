@@ -23,7 +23,7 @@
             <TextBlock VerticalAlignment="Center">Drop files or directories to this window to include them in index</TextBlock>
         </DockPanel>
         <ListBox DockPanel.Dock="Top" Height="200"
-                 ItemsSource="{Binding DocumentSources}">
+                 ItemsSource="{Binding Indexers}">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Vertical">
@@ -43,13 +43,13 @@
                                 </TextBlock>
                             </DataTemplate>
                         </StackPanel.Resources>
-                        <ContentPresenter Content="{Binding DocumentSource}" TextElement.FontSize="14" />
+                        <ContentPresenter Content="{Binding Source}" TextElement.FontSize="14" />
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding State}" Width="200">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding State}" Value="{x:Static indexing:SourceIndexingState.Failed}">
+                                            <DataTrigger Binding="{Binding State}" Value="{x:Static indexing:IndexingState.Failed}">
                                                 <Setter Property="Foreground" Value="OrangeRed" />
                                                 <Setter Property="ToolTip" Value="{Binding Error}" />
                                             </DataTrigger>

@@ -14,8 +14,9 @@ namespace Primitive.Text.Documents
         private readonly string word;
         private readonly IReadOnlyCollection<DocumentInfo> documents;
 
-        internal WordDocuments([CanBeNull] string word, [NotNull] IReadOnlyCollection<DocumentInfo> documents)
+        internal WordDocuments([NotNull] string word, [NotNull] IReadOnlyCollection<DocumentInfo> documents)
         {
+            if (word == null) throw new ArgumentNullException("word");
             if (documents == null) throw new ArgumentNullException("documents");
             this.word = word;
             this.documents = documents;
@@ -23,6 +24,7 @@ namespace Primitive.Text.Documents
         /// <summary>
         ///  Gets the word that all the documents have
         /// </summary>
+        [NotNull]
         public string Word { get { return word; } }
 
 

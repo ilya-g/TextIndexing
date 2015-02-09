@@ -7,7 +7,7 @@ namespace Primitive.Text.Parsers
     /// <summary>
     ///  Represents a parser that can extract words from a document content read with a <see cref="TextReader"/>
     /// </summary>
-    public interface IStreamParser
+    public interface ITextParser
     {
         /// <summary>
         ///  Extracts words from a document content read with <paramref name="sourceReader"/> and returns them as an observable sequence

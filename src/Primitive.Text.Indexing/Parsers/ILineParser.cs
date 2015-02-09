@@ -7,7 +7,7 @@ namespace Primitive.Text.Parsers
     ///  Represents a parser that can extract words from a single line of text
     /// </summary>
     /// <remarks>
-    ///  Implementation of this interface can used by <see cref="LineStreamParser"/> to split content lines to words
+    ///  Implementation of this interface can used by <see cref="LineTextParser"/> to split content lines to words
     /// </remarks>
     public interface ILineParser
     {

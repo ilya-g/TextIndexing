@@ -1,7 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.ComponentModel;
+using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Primitive.Text.Documents;
 using Primitive.Text.Documents.Sources;
 using Primitive.Text.Indexing.Internal;
 using Primitive.Text.Parsers;
@@ -9,133 +17,300 @@ using Primitive.Text.Parsers;
 namespace Primitive.Text.Indexing
 {
     /// <summary>
-    ///  Exposes properties and methods to manage indexed document sources and 
-    ///  provides the access to the index
+    ///  Orchestrates and controls an individual document source indexing pipeline and exposes properties
+    ///  describing the indexing state of the document source.
     /// </summary>
-    /// <remarks>
-    /// </remarks>
-    public sealed class Indexer
+    public sealed class Indexer : IDisposable, INotifyPropertyChanged
     {
+        private static readonly int maxConcurrentIndexing = 8;
+
+        private volatile IDisposable subscription;
+        private volatile int documentsParsed;
+        private volatile int documentsFound;
+        private volatile int documentsChanged;
+        private volatile int documentsFailed;
+
+        private volatile int runningParsers;
+        private volatile Exception error;
+
+        private readonly Subject<Tuple<DocumentInfo, Exception>> indexingErrors = new Subject<Tuple<DocumentInfo, Exception>>();
+
+        private readonly StringComparisonComparer wordComparer;
+
+
         /// <summary>
-        ///  Gets the <see cref="IIndex"/> instance, used to store the relationship between words and documents
+        ///  Creates an instance of <see cref="Indexer"/> that will be indexing documents from 
+        ///  the specified <paramref name="source"/> with the <paramref name="textParser"/> and 
+        ///  merging them to the <paramref name="index"/>
         /// </summary>
-        [NotNull]
-        public IIndex Index { get; private set; }
-        
-        /// <summary>
-        ///  Gets the <see cref="IStreamParser"/> used to extract index words from the document stream
-        /// </summary>
-        [NotNull]
-        public IStreamParser StreamParser { get; private set; }
-
-        /// <summary>
-        ///  Gets the list of sources included into this index
-        /// </summary>
-        /// <value>
-        ///  The list containing <see cref="SourceIndexingAgent"/> instances for each <see cref="IDocumentSource"/> added.
-        /// </value>
-        /// <remarks>
-        ///  Use <see cref="AddSource"/> and <see cref="RemoveSource"/> methods to change the list of sources
-        /// </remarks>
-        [NotNull]
-        public IReadOnlyList<SourceIndexingAgent> Sources { get { return sources; } }
-
-
-        private volatile IImmutableList<SourceIndexingAgent> sources;
-
-        private readonly IComparer<string> wordComparer;
-
-
-        private Indexer([NotNull] IIndex index, [NotNull] IStreamParser streamParser)
+        /// <param name="index"></param>
+        /// <param name="source"></param>
+        /// <param name="textParser"></param>
+        public Indexer([NotNull] IIndex index, [NotNull] IDocumentSource source, [NotNull] ITextParser textParser)
         {
             if (index == null) throw new ArgumentNullException("index");
-            if (streamParser == null) throw new ArgumentNullException("streamParser");
+            if (source == null) throw new ArgumentNullException("source");
+            if (textParser == null) throw new ArgumentNullException("textParser");
 
-            Index = index;
-            StreamParser = streamParser;
-
-            wordComparer = new StringComparisonComparer(index.WordComparison);
-            sources = ImmutableList<SourceIndexingAgent>.Empty;
-        }
-
-        /// <summary>
-        ///  Creates Indexer with the default <see cref="IndexerCreationOptions"/>
-        /// </summary>
-        public static Indexer Create()
-        {
-            return Create(new IndexerCreationOptions());
-        }
-
-        /// <summary>
-        ///  Creates Indexer with the specified <see cref="IndexerCreationOptions"/>
-        /// </summary>
-        /// <param name="options">Options that define indexer behavior: word comparsion, index locking, document parser</param>
-        public static Indexer Create([NotNull] IndexerCreationOptions options)
-        {
-            if (options == null) throw new ArgumentNullException("options");
-            if (options.StreamParser != null && options.LineParser != null)
-                throw new ArgumentException("StreamParser and LineParser cannot be specified simulaneosly", "options");
-
-            var index = options.CreateIndex();
-            var parser = options.StreamParser ?? new LineStreamParser(options.LineParser ?? AlphaNumericWordsLineParser.Instance);
-            return new Indexer(index, parser);
+            this.Index = index;
+            this.Source = source;
+            this.TextParser = textParser;
+            this.wordComparer = new StringComparisonComparer(index.WordComparison);
         }
 
 
-        /// <summary>
-        ///  Creates <see cref="SourceIndexingAgent"/> for the specified <paramref name="source"/> and 
-        ///  adds it to the <see cref="Sources"/> list
-        /// </summary>
-        /// <param name="source">The source, providing documents to include in the index</param>
-        /// <param name="autoStartIndexing">Specifies, whether to start indexing this source immediately</param>
-        /// <returns>Returns <see cref="SourceIndexingAgent"/> created for the <paramref name="source"/></returns>
-        public SourceIndexingAgent AddSource([NotNull] IDocumentSource source, bool autoStartIndexing = true)
-        {
-            if (source == null)
-                throw new ArgumentNullException("source");
-
-            var sourceIndexingAgent = new SourceIndexingAgent(this, source);
-
-            lock (this)
-                sources = sources.Add(sourceIndexingAgent);
-
-            if (autoStartIndexing)
-                sourceIndexingAgent.StartIndexing();
-
-            return sourceIndexingAgent;
-        }
 
         /// <summary>
-        ///  Removes the specified <paramref name="sourceIndexingAgent"/> from the <see cref="Sources"/> list
+        ///  The Indexer this <see cref="Indexing.Indexer"/> belongs to.
         /// </summary>
-        /// <param name="sourceIndexingAgent">The <see cref="SourceIndexingAgent"/> to remove from list</param>
+        public IIndex Index { get; private set; }
+
+        /// <summary>
+        ///  Gets the <see cref="IDocumentSource"/> being indexed
+        /// </summary>
+        public IDocumentSource Source { get; private set; }
+
+        /// <summary>
+        ///  Gets the <see cref="ITextParser"/> used to extract index words from the document stream
+        /// </summary>
+        public ITextParser TextParser { get; private set; }
+
+        /// <summary>
+        ///  Gets the indexing state value
+        /// </summary>
         /// <remarks>
-        ///  If the <see cref="Sources"/> list doesn't contain the specified <paramref name="sourceIndexingAgent"/>,
-        ///  this method does nothing.
+        ///  The indexing state describes which activity this <see cref="Indexing.Indexer"/> is busy with.
+        ///  The returned value may reflect state changes with a certain amount of delay.
         /// </remarks>
-        public void RemoveSource([NotNull] SourceIndexingAgent sourceIndexingAgent)
+        public IndexingState State
         {
-            if (sourceIndexingAgent == null)
-                throw new ArgumentNullException("sourceIndexingAgent");
+            get
+            {
+                return 
+                    subscription == null ? IndexingState.Stopped :
+                    error != null ? IndexingState.Failed :
+                    runningParsers > 0 ? IndexingState.Indexing :
+                        IndexingState.Watching;
+            }
+        }
 
+        /// <summary>
+        ///  Gets the exception value, describing the reason this instance is in the <see cref="IndexingState.Failed"/> state
+        /// </summary>
+        /// <value>
+        ///  In case if the <see cref="State"/> is <see cref="IndexingState.Failed"/> the exception which has lead to this state,
+        ///  null otherwise.
+        /// </value>
+        public Exception Error
+        {
+            get { return error; }
+            private set
+            {
+                error = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        ///  Gets the counter value counting number of documents discovered from <see cref="IDocumentSource.FindAllDocuments"/> method.
+        /// </summary>
+        public int DocumentsFound
+        {
+            get { return documentsFound; }
+            private set
+            {
+                documentsFound = value;
+                OnPropertyChanged();
+            }
+        }
+        /// <summary>
+        ///  Gets the counter value counting number of changed documents from <see cref="IDocumentSource.WatchForChangedDocuments"/> method.
+        /// </summary>
+        public int DocumentsChanged
+        {
+            get { return documentsChanged; }
+            private set
+            {
+                documentsChanged = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        ///  Gets the counter value counting number of documents that was parsed and merged into the index
+        /// </summary>
+        public int DocumentsParsed
+        {
+            get { return documentsParsed; }
+            private set
+            {
+                documentsParsed = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        ///  Gets the counter value counting number of documents failed to be indexed.
+        /// </summary>
+        public int DocumentsFailed
+        {
+            get { return documentsFailed; }
+            private set
+            {
+                documentsFailed = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        ///  Exposes hot observable stream of errors, encountered during parsing or indexing individual documents
+        /// </summary>
+        /// <remarks>
+        ///  Document indexing error does not lead this instance to the <see cref="IndexingState.Failed"/> state
+        ///  and is to be ignored.
+        ///  This stream provides the way to observe such errors.
+        /// </remarks>
+        public IObservable<Tuple<DocumentInfo, Exception>> IndexingErrors { get { return indexingErrors; } }
+
+
+        /// <summary>
+        ///  Begins the indexing of <see cref="Source"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        ///  Starts with calling <see cref="IDocumentSource.FindAllDocuments"/> to discover all documents in source, 
+        ///  and then monitors changes returned with <see cref="IDocumentSource.WatchForChangedDocuments"/>.
+        ///  All theses documents are being parsed and merged into the index.
+        /// </para>
+        /// <para>In case if indexing is already started, does nothing.</para>
+        /// </remarks>
+        public void StartIndexing()
+        {
             lock (this)
             {
-                var newSources = sources.Remove(sourceIndexingAgent);
-                if (sources == newSources)
-                    return;
-                sources = newSources;
+                if (subscription != null) return;
+
+                subscription = 
+                    Observable.Merge(
+                        Source.FindAllDocuments()
+                            .Buffer(TimeSpan.FromSeconds(0.5), 50)
+                            .Where(changes => changes.Count > 0)
+                            .Do(files => DocumentsFound += files.Count),
+                        Source.WatchForChangedDocuments()
+                            .Buffer(TimeSpan.FromSeconds(0.5))
+                            .Where(changes => changes.Count > 0)
+                            .Select(changes => changes.Distinct().ToList())
+                            .Do(changes => DocumentsChanged += changes.Count))
+                    .Do(_ => OnParsingStarted())
+                    .SelectMany(files => files)
+                    .SelectMany(IndexDocument)
+                    .Do(_ => OnParsingStarted())
+                    .Select(d => Observable.FromAsync(() => Task.Run(() => Index.Merge(d.Document, d.IndexWords))))
+                    .Merge(maxConcurrentIndexing)
+                    .Do(_ => DocumentsParsed += 1, ex => { this.Error = ex; OnStateChanged(); })
+                    .Throttle(TimeSpan.FromSeconds(1))
+                    .Subscribe(_ => OnParsingCompleted(), _ => { });
             }
-
-            sourceIndexingAgent.StopIndexing();
-            // remove all documents from this source from index
-            Index.RemoveDocumentsMatching(document => document.Source == sourceIndexingAgent.DocumentSource);
+            OnStateChanged();
         }
 
-        internal ISet<string> CreateEmptyWordSet()
+        /// <summary>
+        ///  Stops the indexing of <see cref="Source"/> and clears the <see cref="Error"/> if any.
+        /// </summary>
+        public void StopIndexing()
         {
-            return new SortedSet<string>(wordComparer);
+            
+            // Stop producing indexed documents
+            lock (this)
+            {
+                if (subscription != null)
+                    subscription.Dispose();
+                subscription = null;
+                Error = null;
+            }
+            OnStateChanged();
+        }
+
+        /// <summary>
+        ///  Removes all documents, indexed with this indexer, from the <see cref="Index"/>
+        /// </summary>
+        public void RemoveFromIndex()
+        {
+            Index.RemoveDocumentsMatching(document => document.Source == Source);
         }
 
 
+        private IObservable<IndexedDocument> IndexDocument(DocumentInfo documentInfo)
+        {
+            return
+                Source.ExtractDocumentWords(documentInfo, TextParser)
+                    .Aggregate(new SortedSet<string>(wordComparer),
+                        (set, word) =>
+                        {
+                            set.Add(word);
+                            return set;
+                        }, 
+                        words => new IndexedDocument(documentInfo, words))
+                    .Catch((Exception e) =>
+                    {
+                        DocumentsFailed += 1;
+                        indexingErrors.OnNext(Tuple.Create(documentInfo, e));
+                        // consider there is no document to index if words can't be extracted from it.
+                        return Observable.Empty<IndexedDocument>();
+                    });
+        }
+
+
+#pragma warning disable 0420 // using ref volatile with Interlocked
+        private void OnParsingStarted()
+        {
+            if (Interlocked.Exchange(ref runningParsers, 1) != 1)
+                OnStateChanged();
+        }
+
+        private void OnParsingCompleted()
+        {
+            if (Interlocked.Exchange(ref runningParsers, 0) != 0)
+                OnStateChanged();
+        }
+#pragma warning restore 0420
+
+
+
+        void IDisposable.Dispose()
+        {
+            StopIndexing();
+        }
+
+        /// <summary>
+        /// Occurs when a property value changes.
+        /// </summary>
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void OnStateChanged() { OnPropertyChanged("State");}
+    }
+
+
+    /// <summary>
+    ///  Indicates the state of <see cref="Indexer"/> indexing
+    /// </summary>
+    public enum IndexingState
+    {
+        /// <summary>Indexing is stopped</summary>
+        Stopped,
+        /// <summary>Documents are being parsed and merged into the index</summary>
+        Indexing,
+        /// <summary>Document parsing and indexing is completed, now watching for changes in document source</summary>
+        Watching,
+        /// <summary>An error is happened during the indexing, which made further indexing being impossible.</summary>
+        /// <remarks>The error can be obtained with the <see cref="Indexer.Error"/> property</remarks>
+        Failed
     }
 }

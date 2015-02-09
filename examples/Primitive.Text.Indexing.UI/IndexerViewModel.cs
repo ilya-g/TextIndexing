@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
@@ -24,22 +23,23 @@ namespace Primitive.Text.Indexing.UI
         public IndexerViewModel()
         {
             DefaultSearchPattern = new SearchPattern("*.txt");
-            RemoveDocumentSourceCommand = new DelegateCommand<SourceIndexingAgent>(RemoveDocumentSource);
+            RemoveDocumentSourceCommand = new DelegateCommand<Indexer>(RemoveDocumentSource);
             SearchCommand = new DelegateCommand(ExecuteQuery);
 
             var baseDirectory = MoveUpThroughHierarhy(new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory), 5).FullName;
 
-            Indexer = Indexer.Create(new IndexerCreationOptions() { IndexLocking = IndexLocking.ReadWrite});
-            Indexer.AddSource(new DirectoryDocumentSource(baseDirectory, "*.cs"), autoStartIndexing: false);
-            Indexer.AddSource(new DirectoryDocumentSource(baseDirectory, "*.xml"), autoStartIndexing: false);
+            IndexerSet = IndexerSet.Create(new IndexerCreationOptions() { IndexLocking = IndexLocking.ReadWrite });
+            IndexerSet.Add(new DirectoryDocumentSource(baseDirectory, "*.cs"), autoStartIndexing: false);
+            IndexerSet.Add(new DirectoryDocumentSource(baseDirectory, "*.xml"), autoStartIndexing: false);
         }
 
 
-        public Indexer Indexer { get; private set; }
+        public IndexerSet IndexerSet { get; private set; }
 
-        public IReadOnlyList<SourceIndexingAgent> DocumentSources
+
+        public IReadOnlyList<Indexer> Indexers
         {
-            get { return Indexer.Sources; }
+            get { return IndexerSet.Indexers; }
         }
 
         public SearchPattern DefaultSearchPattern { get; set; }
@@ -79,7 +79,7 @@ namespace Primitive.Text.Indexing.UI
                 return;
             }
 
-            var index = terms.Length > 1 ? Indexer.Index.Snapshot() : Indexer.Index;
+            var index = terms.Length > 1 ? IndexerSet.Index.Snapshot() : IndexerSet.Index;
 
             HashSet<DocumentInfo> resultDocumentSet = null;
             foreach (var term in terms)
@@ -128,8 +128,8 @@ namespace Primitive.Text.Indexing.UI
 
         public void StartIndexingAllSources()
         {
-            foreach (var documentSourceIndexer in DocumentSources)
-                documentSourceIndexer.StartIndexing();
+            foreach (var indexer in Indexers)
+                indexer.StartIndexing();
         }
 
         public void AddDocumentSourcesFromPathList([NotNull] IEnumerable<string> files)
@@ -151,19 +151,19 @@ namespace Primitive.Text.Indexing.UI
                     Console.WriteLine(e);
                     continue;
                 }
-                Indexer.AddSource(documentSource);
+                IndexerSet.Add(documentSource);
             }
-            OnPropertyChanged("DocumentSources");
+            OnPropertyChanged("Indexers");
         }
 
 
 
-        private void RemoveDocumentSource(SourceIndexingAgent sourceIndexingAgent)
+        private void RemoveDocumentSource(Indexer indexer)
         {
-            if (sourceIndexingAgent != null)
+            if (indexer != null)
             {
-                Indexer.RemoveSource(sourceIndexingAgent);
-                OnPropertyChanged("DocumentSources");
+                IndexerSet.Remove(indexer);
+                OnPropertyChanged("Indexers");
                 ExecuteQuery();
             }
         }

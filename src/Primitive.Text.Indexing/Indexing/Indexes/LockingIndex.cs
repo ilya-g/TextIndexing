@@ -35,6 +35,7 @@ namespace Primitive.Text.Indexing
 
         public WordDocuments GetExactWord(string word)
         {
+            if (word == null) throw new ArgumentNullException("word");
             using (locking.InReadLock())
             {
                 ISet<DocumentInfo> documents;
@@ -48,7 +49,16 @@ namespace Primitive.Text.Indexing
         {
             if (wordBeginning == null) throw new ArgumentNullException("wordBeginning");
 
-            return GetWordsMatching(key => key.StartsWith(wordBeginning, WordComparison));
+            Func<string, bool> wordPredicate = key => key.StartsWith(wordBeginning, WordComparison);
+
+            using (locking.InReadLock())
+            {
+                return wordIndex
+                        .SkipWhile(item => !wordPredicate(item.Key))
+                        .TakeWhile(item => wordPredicate(item.Key))
+                        .Select(item => new WordDocuments(item.Key, item.Value.ToList()))
+                        .ToList();
+            }
         }
 
         public IList<WordDocuments> GetWordsMatching(Func<string, bool> wordPredicate)

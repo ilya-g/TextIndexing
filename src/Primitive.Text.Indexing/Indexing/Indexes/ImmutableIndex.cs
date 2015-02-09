@@ -41,6 +41,8 @@ namespace Primitive.Text.Indexing
 
         public WordDocuments GetExactWord(string word)
         {
+            if (word == null) throw new ArgumentNullException("word");
+
             IImmutableSet<DocumentInfo> documents;
             if (!state.wordIndex.TryGetValue(word, out documents))
                 return new WordDocuments(word, ImmutableArray<DocumentInfo>.Empty);

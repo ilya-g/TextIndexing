@@ -56,11 +56,11 @@
     <Compile Include="Documents\Sources\FileSystemDocumentSource.cs" />
     <Compile Include="Documents\Sources\IDocumentSource.cs" />
     <Compile Include="Documents\IndexedDocument.cs" />
-    <Compile Include="Indexing\SourceIndexingAgent.cs" />
+    <Compile Include="Indexing\Indexer.cs" />
     <Compile Include="Documents\Sources\SearchPattern.cs" />
     <Compile Include="Documents\Sources\SingleFileDocumentSource.cs" />
     <Compile Include="Indexing\IIndex.cs" />
-    <Compile Include="Indexing\Indexer.cs" />
+    <Compile Include="Indexing\IndexerSet.cs" />
     <Compile Include="Indexing\IndexerCreationOptions.cs" />
     <Compile Include="Indexing\Indexes\ImmutableIndex.cs" />
     <Compile Include="Indexing\Indexes\LockingIndex.cs" />
@@ -71,9 +71,9 @@
     <Compile Include="Parsers\AlphaNumericWordsLineParser.cs" />
     <Compile Include="Parsers\PunctuationSplittingLineParser.cs" />
     <Compile Include="Parsers\ILineParser.cs" />
-    <Compile Include="Parsers\IStreamParser.cs" />
+    <Compile Include="Parsers\ITextParser.cs" />
     <Compile Include="Parsers\RegexLineParser.cs" />
-    <Compile Include="Parsers\LineStreamParser.cs" />
+    <Compile Include="Parsers\LineTextParser.cs" />
     <Compile Include="Parsers\WordCharacterParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
