@@ -9,7 +9,7 @@ namespace Primitive.Text.Documents
     /// <summary>
     ///  Represents the collection of documents associated with the specific word
     /// </summary>
-    public struct WordDocuments : IGrouping<string, DocumentInfo>, IReadOnlyCollection<DocumentInfo>
+    public class WordDocuments : IGrouping<string, DocumentInfo>, IReadOnlyCollection<DocumentInfo>
     {
         private readonly string word;
         private readonly IReadOnlyCollection<DocumentInfo> documents;
