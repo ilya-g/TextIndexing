@@ -31,7 +31,7 @@ namespace Primitive.Text.Parsers
         /// </summary>
         /// <param name="line">A line of content text to extract words from</param>
         /// <returns>An enumerable sequence with extracted words</returns>
-        public IEnumerable<string> ExtractWords(string line)
+        public IEnumerable<string> ExtractWords([NotNull] string line)
         {
             if (line == null) throw new ArgumentNullException("line");
 

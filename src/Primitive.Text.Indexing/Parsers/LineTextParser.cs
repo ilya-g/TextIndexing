@@ -23,8 +23,9 @@ namespace Primitive.Text.Parsers
         ///  Initializes a new <see cref="LineTextParser"/> instance with the <paramref name="lineParser"/>
         /// </summary>
         /// <param name="lineParser">A <see cref="ILineParser"/> instance used to extract words from individual lines of content</param>
-        public LineTextParser(ILineParser lineParser)
+        public LineTextParser([NotNull] ILineParser lineParser)
         {
+            if (lineParser == null) throw new ArgumentNullException("lineParser");
             this.lineParser = lineParser;
             UseAsync = false;
         }

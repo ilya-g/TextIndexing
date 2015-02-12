@@ -37,7 +37,7 @@ namespace Primitive.Text.Documents.Sources
         ///  <see cref="TextReader"/> to read text content, or null if the document file does not exist
         /// </returns>
         [CanBeNull]
-        public override TextReader OpenDocument(DocumentInfo document)
+        public override TextReader OpenDocument([NotNull] DocumentInfo document)
         {
             EnsureOwnDocument(document);
             var path = document.Id;
@@ -99,7 +99,7 @@ namespace Primitive.Text.Documents.Sources
         /// <remarks>
         /// When being overriden in derived classes, may construct more specified DocumentInfo and return it
         /// </remarks>
-        protected virtual DocumentInfo DocumentFromPath(string path)
+        protected virtual DocumentInfo DocumentFromPath([NotNull] string path)
         {
             return new DocumentInfo(path, this);
         }

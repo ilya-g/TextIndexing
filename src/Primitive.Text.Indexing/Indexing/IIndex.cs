@@ -119,6 +119,6 @@ namespace Primitive.Text.Indexing
         /// <remarks>
         ///  This method should be implemented as an atomic operation.
         /// </remarks>
-        void RemoveDocumentsMatching(Func<DocumentInfo, bool> predicate);
+        void RemoveDocumentsMatching([NotNull] Func<DocumentInfo, bool> predicate);
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 
 namespace Primitive.Text.Parsers
 {
@@ -20,8 +21,9 @@ namespace Primitive.Text.Parsers
         ///  Initializes a new <see cref="RegexLineParser"/> instance with the specified <paramref name="wordPattern"/>
         /// </summary>
         /// <param name="wordPattern">A <see cref="Regex"/> pattern to match words</param>
-        public RegexLineParser(Regex wordPattern)
+        public RegexLineParser([NotNull] Regex wordPattern)
         {
+            if (wordPattern == null) throw new ArgumentNullException("wordPattern");
             WordPattern = wordPattern;
         }
 
@@ -35,7 +37,7 @@ namespace Primitive.Text.Parsers
         /// </summary>
         /// <param name="line">A line of content text to extract words from</param>
         /// <returns>An enumerable sequence with extracted words</returns>
-        public IEnumerable<string> ExtractWords(string line)
+        public IEnumerable<string> ExtractWords([NotNull] string line)
         {
             if (line == null) throw new ArgumentNullException("line");
 

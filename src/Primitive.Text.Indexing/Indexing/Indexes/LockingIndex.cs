@@ -33,7 +33,7 @@ namespace Primitive.Text.Indexing
         public StringComparison WordComparison { get { return wordComparer.ComparisonType; } }
 
 
-        public WordDocuments GetExactWord(string word)
+        public WordDocuments GetExactWord([NotNull] string word)
         {
             if (word == null) throw new ArgumentNullException("word");
             using (locking.InReadLock())
@@ -45,7 +45,7 @@ namespace Primitive.Text.Indexing
             }
         }
 
-        public IList<WordDocuments> GetWordsStartWith(string wordBeginning)
+        public IList<WordDocuments> GetWordsStartWith([NotNull] string wordBeginning)
         {
             if (wordBeginning == null) throw new ArgumentNullException("wordBeginning");
 
@@ -61,7 +61,7 @@ namespace Primitive.Text.Indexing
             }
         }
 
-        public IList<WordDocuments> GetWordsMatching(Func<string, bool> wordPredicate)
+        public IList<WordDocuments> GetWordsMatching([NotNull] Func<string, bool> wordPredicate)
         {
             if (wordPredicate == null) throw new ArgumentNullException("wordPredicate");
 
@@ -160,8 +160,10 @@ namespace Primitive.Text.Indexing
             }
         }
 
-        public void RemoveDocumentsMatching(Func<DocumentInfo, bool> predicate)
+        public void RemoveDocumentsMatching([NotNull] Func<DocumentInfo, bool> predicate)
         {
+            if (predicate == null) throw new ArgumentNullException("predicate");
+
             using (locking.InWriteLock())
             {
                 var valuesToRemove = allDocuments.Where(predicate).ToList();

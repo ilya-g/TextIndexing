@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Indexing.Internal;
 
@@ -39,7 +40,7 @@ namespace Primitive.Text.Indexing
         /// </summary>
         public StringComparison WordComparison { get { return wordComparer.ComparisonType; } }
 
-        public WordDocuments GetExactWord(string word)
+        public WordDocuments GetExactWord([NotNull] string word)
         {
             if (word == null) throw new ArgumentNullException("word");
 
@@ -49,7 +50,7 @@ namespace Primitive.Text.Indexing
             return new WordDocuments(word, documents);
         }
 
-        public IList<WordDocuments> GetWordsStartWith(string wordBeginning)
+        public IList<WordDocuments> GetWordsStartWith([NotNull] string wordBeginning)
         {
             if (wordBeginning == null) throw new ArgumentNullException("wordBeginning");
 
@@ -68,7 +69,7 @@ namespace Primitive.Text.Indexing
                 ).ToList();
         }
 
-        public IList<WordDocuments> GetWordsMatching(Func<string, bool> wordPredicate)
+        public IList<WordDocuments> GetWordsMatching([NotNull] Func<string, bool> wordPredicate)
         {
             if (wordPredicate == null) throw new ArgumentNullException("wordPredicate");
 
@@ -93,7 +94,7 @@ namespace Primitive.Text.Indexing
             return new ImmutableIndex(state.wordIndex, state.documents);
         }
 
-        public void Merge(DocumentInfo document, IEnumerable<string> indexWords)
+        public void Merge([NotNull] DocumentInfo document, [NotNull] IEnumerable<string> indexWords)
         {
             if (document == null) throw new ArgumentNullException("document");
             if (indexWords == null) throw new ArgumentNullException("indexWords");
@@ -165,8 +166,10 @@ namespace Primitive.Text.Indexing
             }
         }
 
-        public void RemoveDocumentsMatching(Func<DocumentInfo, bool> predicate)
+        public void RemoveDocumentsMatching([NotNull] Func<DocumentInfo, bool> predicate)
         {
+            if (predicate == null) throw new ArgumentNullException("predicate");
+
             lock (lockIndex)
             {
                 var oldDocuments = state.documents;

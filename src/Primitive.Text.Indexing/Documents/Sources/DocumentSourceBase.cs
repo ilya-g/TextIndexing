@@ -22,7 +22,7 @@ namespace Primitive.Text.Documents.Sources
         ///  Can return null if the document exists no more in the source and should be removed from the index
         /// </returns>
         [CanBeNull]
-        public abstract TextReader OpenDocument(DocumentInfo document);
+        public abstract TextReader OpenDocument([NotNull] DocumentInfo document);
 
 
         /// <summary>
@@ -38,9 +38,10 @@ namespace Primitive.Text.Documents.Sources
         /// <remarks>
         /// This method can be overriden in derived classes to add some behavior to the returned observable sequence
         /// </remarks>
-        public virtual IObservable<string> ExtractDocumentWords(DocumentInfo document, ITextParser textParser)
+        public virtual IObservable<string> ExtractDocumentWords([NotNull] DocumentInfo document, [NotNull] ITextParser textParser)
         {
             EnsureOwnDocument(document);
+            if (textParser == null) throw new ArgumentNullException("textParser");
 
             return Observable.Using(
                 () => OpenDocument(document),
