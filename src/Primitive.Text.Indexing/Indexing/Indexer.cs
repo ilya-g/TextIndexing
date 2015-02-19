@@ -205,7 +205,7 @@ namespace Primitive.Text.Indexing
                     .SelectMany(files => files)
                     .SelectMany(IndexDocument)
                     .Do(_ => OnParsingStarted())
-                    .Select(d => Observable.FromAsync(() => Task.Run(() => Index.Merge(d.Document, d.IndexWords))))
+                    .Select(d => Observable.FromAsync(() => Index.Merge(d.Document, d.IndexWords)))
                     .Merge(maxConcurrentIndexing)
                     .Do(_ => DocumentsParsed += 1, ex => { this.Error = ex; OnStateChanged(); })
                     .Throttle(TimeSpan.FromSeconds(1))

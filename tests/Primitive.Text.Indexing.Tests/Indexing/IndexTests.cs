@@ -35,7 +35,7 @@ namespace Primitive.Text.Indexing
             var document = new DocumentInfo("id1", TestDocumentSource.Instance);
             var words = new[] {"cat", "category"};
 
-            index.Merge(document, words);
+            index.Merge(document, words).Wait();
 
             foreach (var word in words)
             {
@@ -53,7 +53,7 @@ namespace Primitive.Text.Indexing
             }
             Assert.That(index.GetWordsStartWith("cate"), Has.Count.EqualTo(1));
 
-            index.Merge(document, Enumerable.Empty<string>());
+            index.Merge(document, Enumerable.Empty<string>()).Wait();
             foreach (var word in words)
             {
                 Assert.That(index.GetExactWord(word), Is.Empty);
@@ -92,7 +92,7 @@ namespace Primitive.Text.Indexing
             var document = new DocumentInfo("id1", TestDocumentSource.Instance);
             var words = new[] { "Schrœdinger", "Schroedinger", "Schroeder" };
 
-            index.Merge(document, words);
+            index.Merge(document, words).Wait();
             Assert.That(index.GetIndexedWords(), Has.Count.EqualTo(2));
 
             Assert.That(index.GetWordsStartWith("schroe"), Has.Count.EqualTo(2));
@@ -105,13 +105,13 @@ namespace Primitive.Text.Indexing
             IIndex index = indexCreationOptions.CreateIndex();
             var document = new DocumentInfo("id1", TestDocumentSource.Instance);
             var words = new[] { "cat", "category" };
-            index.Merge(document, words);
+            index.Merge(document, words).Wait();
 
             var snapshot = index.Snapshot();
 
             var document2 = new DocumentInfo("id2", TestDocumentSource.Instance);
             var words2 = new[] {"bar"};
-            index.Merge(document2, words2);
+            index.Merge(document2, words2).Wait();
 
             Assert.That(snapshot.GetIndexedWords(), Is.EquivalentTo(words));
             Assert.That(snapshot.GetWordsMatching(_ => true).SelectMany(item => item).Distinct().Single(), Is.EqualTo(document));
@@ -256,7 +256,7 @@ namespace Primitive.Text.Indexing
         {
             var sw = Stopwatch.StartNew();
             Parallel.ForEach(documents, new ParallelOptions {MaxDegreeOfParallelism = 2},
-                item => index.Merge(item.Document, item.IndexWords));
+                item => index.Merge(item.Document, item.IndexWords).Wait());
             sw.Stop();
             Console.WriteLine("Populated index, elapsed {0} ms, total {1} documents processed, total {2} words indexed", sw.ElapsedMilliseconds, documents.Count, index.GetIndexedWords().Count);
         }

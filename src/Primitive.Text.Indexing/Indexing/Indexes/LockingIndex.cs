@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Indexing.Internal;
@@ -95,7 +96,7 @@ namespace Primitive.Text.Indexing
             return snapshot;
         }
 
-        public void Merge(DocumentInfo document, IEnumerable<string> indexWords)
+        public Task Merge(DocumentInfo document, IEnumerable<string> indexWords)
         {
             if (document == null) throw new ArgumentNullException("document");
             if (indexWords == null) throw new ArgumentNullException("indexWords");
@@ -107,7 +108,8 @@ namespace Primitive.Text.Indexing
             using (locking.InWriteLock())
             {
                 bool isNewDocument = hasWords ? allDocuments.Add(document) : !allDocuments.Remove(document);
-                if (isNewDocument && !hasWords) return;
+                if (isNewDocument && !hasWords)
+                    return CompletedTask.Instance;
 
                 int idxSource = 0;
                 int idxTarget = 0;
@@ -158,6 +160,7 @@ namespace Primitive.Text.Indexing
                     idxTarget += 1;
                 }
             }
+            return CompletedTask.Instance;
         }
 
         public void RemoveDocumentsMatching([NotNull] Func<DocumentInfo, bool> predicate)

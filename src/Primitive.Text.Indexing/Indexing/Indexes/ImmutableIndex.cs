@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Indexing.Internal;
@@ -94,7 +95,7 @@ namespace Primitive.Text.Indexing
             return new ImmutableIndex(state.wordIndex, state.documents);
         }
 
-        public void Merge([NotNull] DocumentInfo document, [NotNull] IEnumerable<string> indexWords)
+        public Task Merge([NotNull] DocumentInfo document, [NotNull] IEnumerable<string> indexWords)
         {
             if (document == null) throw new ArgumentNullException("document");
             if (indexWords == null) throw new ArgumentNullException("indexWords");
@@ -108,7 +109,8 @@ namespace Primitive.Text.Indexing
                 var oldDocuments = state.documents;
                 var newDocuments = hasWords ? oldDocuments.Add(document) : oldDocuments.Remove(document);
                 bool isNewDocument = hasWords == (newDocuments != oldDocuments);
-                if (isNewDocument && !hasWords) return;
+                if (isNewDocument && !hasWords) 
+                    return CompletedTask.Instance;
 
                 var oldIndex = state.wordIndex;
                 var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count + sourceWords.Count);
@@ -164,6 +166,7 @@ namespace Primitive.Text.Indexing
                 }
                 this.state = new State(newIndex, newDocuments);
             }
+            return CompletedTask.Instance;
         }
 
         public void RemoveDocumentsMatching([NotNull] Func<DocumentInfo, bool> predicate)
