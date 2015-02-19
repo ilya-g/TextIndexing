@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Documents.Sources;
@@ -262,7 +262,8 @@ namespace Primitive.Text.Indexing
                         indexingErrors.OnNext(Tuple.Create(documentInfo, e));
                         // consider there is no document to index if words can't be extracted from it.
                         return Observable.Empty<IndexedDocument>();
-                    });
+                    })
+                    .SubscribeOn(Scheduler.Default);
         }
 
 
