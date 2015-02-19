@@ -30,15 +30,20 @@ namespace Primitive.Text.Documents.Sources
         IObservable<DocumentInfo> WatchForChangedDocuments();
 
         /// <summary>
-        ///  Extracts words to index from the <paramref name="document"/> with the specified <paramref name="textParser"/>
+        ///  Reads the <paramref name="document"/> with the specified progressive <paramref name="documentReader"/>
         /// </summary>
+        /// <typeparam name="T">Type of data elements being read from the document</typeparam>
         /// <param name="document">The document from this source</param>
-        /// <param name="textParser">The parser to be used to extract words from the document stream</param>
+        /// <param name="documentReader">
+        ///  A function, that given the document <see cref="TextReader"/> extracts the elements of the <typeparamref name="T"/> type from it.
+        /// </param>
         /// <returns>
-        /// Returns an observable sequence of document words, that being subscribed to
-        /// pushes all words from the document and then completes. 
-        /// This sequence can also complete with fail, if there was  an error opening or reading the document.
+        ///  Returns an empty sequence if the document is not found.
+        ///  Returns a failed empty sequence if the document cannot be opened.
+        ///  Returns an observable sequence returned by <paramref name="documentReader"/>, that being subscribed to
+        ///  pushes all the extracted data elements from the document and then completes.
+        ///  This sequence can also complete with fail, if there was an error reading the document.
         /// </returns>
-        IObservable<string> ExtractDocumentWords([NotNull] DocumentInfo document, [NotNull] ITextParser textParser);
+        IObservable<T> ReadDocumentText<T>([NotNull] DocumentInfo document, [NotNull] Func<TextReader, IObservable<T>> documentReader);
     }
 }

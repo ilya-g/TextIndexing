@@ -64,6 +64,7 @@
     <Compile Include="Indexing\IndexerCreationOptions.cs" />
     <Compile Include="Indexing\Indexes\ImmutableIndex.cs" />
     <Compile Include="Indexing\Indexes\LockingIndex.cs" />
+    <Compile Include="Indexing\Internal\CompletedTask.cs" />
     <Compile Include="Indexing\Internal\InternalSortedList.cs" />
     <Compile Include="Indexing\Internal\LockingStrategy.cs" />
     <Compile Include="Indexing\Internal\StringComparisonComparer.cs" />

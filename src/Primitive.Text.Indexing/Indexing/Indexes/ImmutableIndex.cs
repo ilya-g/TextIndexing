@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Indexing.Internal;
@@ -94,7 +95,7 @@ namespace Primitive.Text.Indexing
             return new ImmutableIndex(state.wordIndex, state.documents);
         }
 
-        public void Merge([NotNull] DocumentInfo document, [NotNull] IEnumerable<string> indexWords)
+        public Task Merge([NotNull] DocumentInfo document, [NotNull] IEnumerable<string> indexWords)
         {
             if (document == null) throw new ArgumentNullException("document");
             if (indexWords == null) throw new ArgumentNullException("indexWords");
@@ -105,10 +106,21 @@ namespace Primitive.Text.Indexing
             // Merge join sorted word list with wordIndex list
             lock (lockIndex)
             {
-                var oldDocuments = state.documents;
-                var newDocuments = hasWords ? oldDocuments.Add(document) : oldDocuments.Remove(document);
-                bool isNewDocument = hasWords == (newDocuments != oldDocuments);
-                if (isNewDocument && !hasWords) return;
+                IImmutableSet<DocumentInfo> oldDocuments = state.documents;
+                IImmutableSet<DocumentInfo> newDocuments;
+                bool isNewDocument;
+                if (hasWords)
+                {
+                    newDocuments = oldDocuments.Add(document);
+                    isNewDocument = newDocuments != oldDocuments; // new if was added to document set
+                }
+                else
+                {
+                    newDocuments = oldDocuments.Remove(document);
+                    isNewDocument = newDocuments == oldDocuments; // new if wasn't contained before in document set
+                    if (isNewDocument)
+                        return CompletedTask.Instance;
+                }
 
                 var oldIndex = state.wordIndex;
                 var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count + sourceWords.Count);
@@ -164,6 +176,7 @@ namespace Primitive.Text.Indexing
                 }
                 this.state = new State(newIndex, newDocuments);
             }
+            return CompletedTask.Instance;
         }
 
         public void RemoveDocumentsMatching([NotNull] Func<DocumentInfo, bool> predicate)
@@ -173,9 +186,12 @@ namespace Primitive.Text.Indexing
             lock (lockIndex)
             {
                 var oldDocuments = state.documents;
-                var newDocuments = oldDocuments.Except(oldDocuments.Where(predicate));
-                if (newDocuments == oldDocuments)
+                var allDocumentsToRemove = new HashSet<DocumentInfo>(oldDocuments.Where(predicate));
+                if (!allDocumentsToRemove.Any())
                     return;
+                var newDocuments = oldDocuments.Except(allDocumentsToRemove);
+
+                predicate = allDocumentsToRemove.Contains;
 
                 var oldIndex = state.wordIndex;
                 var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count);

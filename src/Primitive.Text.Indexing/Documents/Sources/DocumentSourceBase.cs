@@ -26,29 +26,31 @@ namespace Primitive.Text.Documents.Sources
 
 
         /// <summary>
-        ///  Extracts words to index from the <paramref name="document"/> with the specified <paramref name="textParser"/>
+        ///  Reads the <paramref name="document"/> with the specified progressive <paramref name="documentReader"/>
         /// </summary>
+        /// <typeparam name="T">Type of data elements being read from the document</typeparam>
         /// <param name="document">The document from this source</param>
-        /// <param name="textParser">The parser to be used to extract words from the document stream</param>
+        /// <param name="documentReader">
+        ///  A function, that given the document <see cref="TextReader"/> extracts the elements of the <typeparamref name="T"/> type from it.
+        /// </param>
         /// <returns>
-        /// Returns an observable sequence of document words, that being subscribed to
-        /// pushes all words from the document and then completes. This sequence also complete with fail, if there was
-        /// an error opening or reading the document.
+        ///  Returns an observable sequence returned by <paramref name="documentReader"/>.
         /// </returns>
         /// <remarks>
         /// This method can be overriden in derived classes to add some behavior to the returned observable sequence
         /// </remarks>
-        public virtual IObservable<string> ExtractDocumentWords([NotNull] DocumentInfo document, [NotNull] ITextParser textParser)
+        public virtual IObservable<T> ReadDocumentText<T>([NotNull] DocumentInfo document, [NotNull] Func<TextReader, IObservable<T>> documentReader)
         {
+            if (document == null) throw new ArgumentNullException("document");
+            if (documentReader == null) throw new ArgumentNullException("documentReader");
             EnsureOwnDocument(document);
-            if (textParser == null) throw new ArgumentNullException("textParser");
 
             return Observable.Using(
                 () => OpenDocument(document),
                 reader =>
                     reader != null
-                        ? textParser.ExtractWords(reader)
-                        : Observable.Empty<string>());
+                        ? documentReader(reader)
+                        : Observable.Empty<T>());
         }
 
         /// <summary>

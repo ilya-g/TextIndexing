@@ -45,6 +45,7 @@ namespace Primitive.Text.Indexing
 
 
         private volatile IImmutableList<Indexer> indexers;
+        private readonly object lockObject = new object();
 
 
         private IndexerSet([NotNull] IIndex index, [NotNull] ITextParser defaultTextParser)
@@ -95,7 +96,7 @@ namespace Primitive.Text.Indexing
             if (ContainsSource(indexer.Source))
                 throw new ArgumentException("Source is already included in this IndexerSet", "indexer");
 
-            lock (this)
+            lock (lockObject)
                 indexers = indexers.Add(indexer);
 
             return indexer;
@@ -122,7 +123,7 @@ namespace Primitive.Text.Indexing
 
             var indexer = new Indexer(Index, source, textParser ?? DefaultTextParser);
 
-            lock (this)
+            lock (lockObject)
                 indexers = indexers.Add(indexer);
 
             if (autoStartIndexing)
@@ -149,7 +150,7 @@ namespace Primitive.Text.Indexing
             if (indexer == null)
                 throw new ArgumentNullException("indexer");
 
-            lock (this)
+            lock (lockObject)
             {
                 var newSources = indexers.Remove(indexer);
                 if (indexers == newSources)

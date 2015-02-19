@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
 
@@ -100,17 +101,24 @@ namespace Primitive.Text.Indexing
         /// </summary>
         /// <param name="document">Document to include in index</param>
         /// <param name="indexWords">Words to index document by</param>
+        /// <returns>
+        ///  Task that completes when document merging is completed
+        /// </returns>
         /// <remarks>
         /// <para>
         ///  Merge should be implemented as an atomic operation: queries and snapshot operations 
         ///  either will see index before the merge or after the merge.
         /// </para>
         /// <para>
+        ///  Merge can execute itself synchronously and return already completed task if an index implementation
+        ///  doesn't support effective merge parallelization.
+        /// </para>
+        /// <para>
         /// When the <paramref name="document"/> is already included in this index, 
         /// its old index words are removed from index before merging new index words.
         /// </para>
         /// </remarks>
-        void Merge([NotNull] DocumentInfo document, [NotNull] IEnumerable<string> indexWords);
+        Task Merge([NotNull] DocumentInfo document, [NotNull] IEnumerable<string> indexWords);
 
         /// <summary>
         ///  Removes from the index all documents matching the specified <paramref name="predicate"/>

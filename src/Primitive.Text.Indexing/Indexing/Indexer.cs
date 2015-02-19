@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Primitive.Text.Documents;
 using Primitive.Text.Documents.Sources;
@@ -36,7 +37,10 @@ namespace Primitive.Text.Indexing
         private readonly Subject<Tuple<DocumentInfo, Exception>> indexingErrors = new Subject<Tuple<DocumentInfo, Exception>>();
 
         private readonly StringComparisonComparer wordComparer;
+        private readonly object lockObject = new object();
 
+        // cached TextParser.ExtractWords delegate
+        private readonly Func<TextReader, IObservable<string>> textParserReader; 
 
         /// <summary>
         ///  Creates an instance of <see cref="Indexer"/> that will be indexing documents from 
@@ -55,6 +59,7 @@ namespace Primitive.Text.Indexing
             this.Index = index;
             this.Source = source;
             this.TextParser = textParser;
+            this.textParserReader = textParser.ExtractWords;
             this.wordComparer = new StringComparisonComparer(index.WordComparison);
         }
 
@@ -186,7 +191,7 @@ namespace Primitive.Text.Indexing
         /// </remarks>
         public void StartIndexing()
         {
-            lock (this)
+            lock (lockObject)
             {
                 if (subscription != null) return;
 
@@ -205,7 +210,7 @@ namespace Primitive.Text.Indexing
                     .SelectMany(files => files)
                     .SelectMany(IndexDocument)
                     .Do(_ => OnParsingStarted())
-                    .Select(d => Observable.FromAsync(() => Task.Run(() => Index.Merge(d.Document, d.IndexWords))))
+                    .Select(d => Observable.FromAsync(() => Index.Merge(d.Document, d.IndexWords)))
                     .Merge(maxConcurrentIndexing)
                     .Do(_ => DocumentsParsed += 1, ex => { this.Error = ex; OnStateChanged(); })
                     .Throttle(TimeSpan.FromSeconds(1))
@@ -221,7 +226,7 @@ namespace Primitive.Text.Indexing
         {
             
             // Stop producing indexed documents
-            lock (this)
+            lock (lockObject)
             {
                 if (subscription != null)
                     subscription.Dispose();
@@ -243,7 +248,7 @@ namespace Primitive.Text.Indexing
         private IObservable<IndexedDocument> IndexDocument(DocumentInfo documentInfo)
         {
             return
-                Source.ExtractDocumentWords(documentInfo, TextParser)
+                Source.ReadDocumentText(documentInfo, textParserReader)
                     .Aggregate(new SortedSet<string>(wordComparer),
                         (set, word) =>
                         {
@@ -257,7 +262,8 @@ namespace Primitive.Text.Indexing
                         indexingErrors.OnNext(Tuple.Create(documentInfo, e));
                         // consider there is no document to index if words can't be extracted from it.
                         return Observable.Empty<IndexedDocument>();
-                    });
+                    })
+                    .SubscribeOn(Scheduler.Default);
         }
 
 
