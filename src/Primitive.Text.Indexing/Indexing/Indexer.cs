@@ -36,7 +36,7 @@ namespace Primitive.Text.Indexing
         private readonly Subject<Tuple<DocumentInfo, Exception>> indexingErrors = new Subject<Tuple<DocumentInfo, Exception>>();
 
         private readonly StringComparisonComparer wordComparer;
-
+        private readonly object lockObject = new object();
 
         /// <summary>
         ///  Creates an instance of <see cref="Indexer"/> that will be indexing documents from 
@@ -186,7 +186,7 @@ namespace Primitive.Text.Indexing
         /// </remarks>
         public void StartIndexing()
         {
-            lock (this)
+            lock (lockObject)
             {
                 if (subscription != null) return;
 
@@ -221,7 +221,7 @@ namespace Primitive.Text.Indexing
         {
             
             // Stop producing indexed documents
-            lock (this)
+            lock (lockObject)
             {
                 if (subscription != null)
                     subscription.Dispose();
