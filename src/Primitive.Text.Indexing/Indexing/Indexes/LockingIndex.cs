@@ -166,11 +166,14 @@ namespace Primitive.Text.Indexing
 
             using (locking.InWriteLock())
             {
-                var valuesToRemove = allDocuments.Where(predicate).ToList();
-                if (!valuesToRemove.Any())
+                var allDocumentsToRemove = new HashSet<DocumentInfo>(allDocuments.Where(predicate));
+                if (!allDocumentsToRemove.Any())
                     return;
-                allDocuments.ExceptWith(valuesToRemove);
-                valuesToRemove = new List<DocumentInfo>();
+                allDocuments.ExceptWith(allDocumentsToRemove);
+
+                predicate = allDocumentsToRemove.Contains;
+
+                var valuesToRemove = new List<DocumentInfo>();
 
                 for (int i = wordIndex.Count - 1; i >= 0; i--)
                 {

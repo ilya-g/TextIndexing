@@ -173,9 +173,12 @@ namespace Primitive.Text.Indexing
             lock (lockIndex)
             {
                 var oldDocuments = state.documents;
-                var newDocuments = oldDocuments.Except(oldDocuments.Where(predicate));
-                if (newDocuments == oldDocuments)
+                var allDocumentsToRemove = new HashSet<DocumentInfo>(oldDocuments.Where(predicate));
+                if (!allDocumentsToRemove.Any())
                     return;
+                var newDocuments = oldDocuments.Except(allDocumentsToRemove);
+
+                predicate = allDocumentsToRemove.Contains;
 
                 var oldIndex = state.wordIndex;
                 var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count);
