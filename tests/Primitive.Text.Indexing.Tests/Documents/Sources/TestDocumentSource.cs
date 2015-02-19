@@ -2,7 +2,6 @@
 using System.IO;
 using System.Linq;
 using System.Text;
-using Primitive.Text.Parsers;
 
 namespace Primitive.Text.Documents.Sources
 {
@@ -21,7 +20,7 @@ namespace Primitive.Text.Documents.Sources
             throw new NotImplementedException();
         }
 
-        public IObservable<string> ExtractDocumentWords(DocumentInfo document, ITextParser textParser)
+        public IObservable<T> ReadDocumentText<T>(DocumentInfo document, Func<TextReader, IObservable<T>> documentReader)
         {
             throw new NotImplementedException();
         }

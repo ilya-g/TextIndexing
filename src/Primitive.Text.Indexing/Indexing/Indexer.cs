@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -38,6 +39,9 @@ namespace Primitive.Text.Indexing
         private readonly StringComparisonComparer wordComparer;
         private readonly object lockObject = new object();
 
+        // cached TextParser.ExtractWords delegate
+        private readonly Func<TextReader, IObservable<string>> textParserReader; 
+
         /// <summary>
         ///  Creates an instance of <see cref="Indexer"/> that will be indexing documents from 
         ///  the specified <paramref name="source"/> with the <paramref name="textParser"/> and 
@@ -55,6 +59,7 @@ namespace Primitive.Text.Indexing
             this.Index = index;
             this.Source = source;
             this.TextParser = textParser;
+            this.textParserReader = textParser.ExtractWords;
             this.wordComparer = new StringComparisonComparer(index.WordComparison);
         }
 
@@ -243,7 +248,7 @@ namespace Primitive.Text.Indexing
         private IObservable<IndexedDocument> IndexDocument(DocumentInfo documentInfo)
         {
             return
-                Source.ExtractDocumentWords(documentInfo, TextParser)
+                Source.ReadDocumentText(documentInfo, textParserReader)
                     .Aggregate(new SortedSet<string>(wordComparer),
                         (set, word) =>
                         {
