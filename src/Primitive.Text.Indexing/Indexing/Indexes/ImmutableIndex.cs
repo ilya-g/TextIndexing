@@ -106,11 +106,21 @@ namespace Primitive.Text.Indexing
             // Merge join sorted word list with wordIndex list
             lock (lockIndex)
             {
-                var oldDocuments = state.documents;
-                var newDocuments = hasWords ? oldDocuments.Add(document) : oldDocuments.Remove(document);
-                bool isNewDocument = hasWords == (newDocuments != oldDocuments);
-                if (isNewDocument && !hasWords) 
-                    return CompletedTask.Instance;
+                IImmutableSet<DocumentInfo> oldDocuments = state.documents;
+                IImmutableSet<DocumentInfo> newDocuments;
+                bool isNewDocument;
+                if (hasWords)
+                {
+                    newDocuments = oldDocuments.Add(document);
+                    isNewDocument = newDocuments != oldDocuments; // new if was added to document set
+                }
+                else
+                {
+                    newDocuments = oldDocuments.Remove(document);
+                    isNewDocument = newDocuments == oldDocuments; // new if wasn't contained before in document set
+                    if (isNewDocument)
+                        return CompletedTask.Instance;
+                }
 
                 var oldIndex = state.wordIndex;
                 var newIndex = new InternalSortedList<string, IImmutableSet<DocumentInfo>>(this.wordComparer, oldIndex.Count + sourceWords.Count);
