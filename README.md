@@ -5,10 +5,11 @@ This library provides the way to index text documents by words they contain.
 ## Basic usage
 
 First you should create the `IndexerSet` instance
-
-````C# executable
+ 
+[comment]: # (This actually is the most platform independent comment)
+`````kotlin
 var indexerSet = IndexerSet.Create();
-````
+`````
 
 An `IndexerCreationOptions` instance with the following additional options can be specified as an argument to
 this method:
