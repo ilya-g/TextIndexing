@@ -6,7 +6,7 @@ This library provides the way to index text documents by words they contain.
 
 First you should create the `IndexerSet` instance
 
-````C#
+````C# executable
 var indexerSet = IndexerSet.Create();
 ````
 
